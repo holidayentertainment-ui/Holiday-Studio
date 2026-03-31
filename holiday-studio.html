@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Holiday Focus Studio</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState } = React;
+
+    const API_BASE = 'http://localhost:3001';
+    const STRIPE_CHECKOUT_URL = 'https://buy.stripe.com/test_4gMdR90io9fD5vOdhobII00';
+
+    const FREE_FEATURES = [
+      'professional_headshot',
+      'model_casting',
+      'quarter_editorial',
+    ];
+
+    const FEATURES = [
+      { id: 'professional_headshot', label: 'Professional Headshot', tier: 'free', blurb: 'Clean, studio-quality professional portraits.' },
+      { id: 'model_casting', label: 'Model Casting', tier: 'free', blurb: 'Simple, accurate casting-style presentation.' },
+      { id: 'quarter_editorial', label: 'Quarter Editorial', tier: 'free', blurb: 'Editorial portrait from mid-torso to head.' },
+      { id: 'full_editorial', label: 'Full Editorial', tier: 'premium', blurb: 'High-impact editorial styling and framing.' },
+      { id: 'high_fashion', label: 'High Fashion', tier: 'premium', blurb: 'Campaign-ready luxury fashion energy.' },
+      { id: 'cinematic_portrait', label: 'Cinematic Portrait', tier: 'premium', blurb: 'Moody lighting and dramatic visual tone.' },
+    ];
+
+    const POSE_OPTIONS = [
+      {
+        id: 'female',
+        label: 'Female',
+        description: 'Standard feminine editorial posing with graceful, confident lines.',
+      },
+      {
+        id: 'male',
+        label: 'Male',
+        description: 'Structured masculine posing with clean GQ-inspired presence.',
+      },
+      {
+        id: 'non_binary',
+        label: 'Non-Binary',
+        description: 'Balanced blend of masculine and feminine editorial pose language.',
+      },
+    ];
+
+    function buildBasePrompt() {
+      return `Keep identity lock consistent. Preserve realistic anatomy, natural skin texture, and true proportions. Use professional image quality and avoid distortion.`;
+    }
+
+    function buildPosePrompt(pose) {
+      switch (pose) {
+        case 'female':
+          return `Apply standard feminine editorial posing. Use elegant posture, refined hand placement, soft confidence, and styling cues from the reference image textures.`;
+        case 'male':
+          return `Apply standard masculine editorial posing. Use strong posture, confident suit-inspired stance, and styling harmony guided by colors detected from the reference image.`;
+        case 'non_binary':
+          return `Apply a balanced editorial posing approach that blends feminine and masculine pose language naturally while preserving realism and style.`;
+        default:
+          return '';
+      }
+    }
+
+    function buildFeaturePrompt(featureId) {
+      switch (featureId) {
+        case 'professional_headshot':
+          return `Create one full-frame professional headshot using the uploaded reference photo. Use a clean neutral professional background, soft even casting-style lighting, natural skin texture, and an 85mm portrait feel. Mood should be confident, approachable, and professional.`;
+        case 'model_casting':
+          return `Create one model casting image using the uploaded reference photo. Maintain true identity and body proportions with a clean, standard, professional pose and a simple neutral background.`;
+        case 'quarter_editorial':
+          return `Create one quarter-length editorial portrait using the uploaded reference photo. Maintain identity lock, realistic anatomy, modern editorial lighting, and a confident fashion-forward presence.`;
+        case 'full_editorial':
+          return `Create one full editorial portrait using the uploaded reference photo with elevated styling, strong composition, and premium editorial polish.`;
+        case 'high_fashion':
+          return `Create one full-frame professional full-body high-fashion editorial image using the uploaded reference photo. Match body size and proportions exactly. Use elevated fashion-forward styling and a bold campaign-ready mood.`;
+        case 'cinematic_portrait':
+          return `Create one cinematic portrait using the uploaded reference photo with dramatic lighting, clear subject separation, grounded realism, and polished cinematic color.`;
+        default:
+          return '';
+      }
+    }
+
+    function HolidayFocusStudioWebApp() {
+      const [selectedFeature, setSelectedFeature] = useState('professional_headshot');
+      const [selectedPose, setSelectedPose] = useState('female');
+      const [hasPremium, setHasPremium] = useState(false);
+      const [selectedFileName, setSelectedFileName] = useState('');
+      const [selectedFile, setSelectedFile] = useState(null);
+      const [generated, setGenerated] = useState(false);
+      const [generatedImage, setGeneratedImage] = useState('');
+      const [isGenerating, setIsGenerating] = useState(false);
+      const [errorMessage, setErrorMessage] = useState('');
+      const [locationInput, setLocationInput] = useState('');
+      const [wardrobeInput, setWardrobeInput] = useState('');
+
+      const isFreeFeature = FREE_FEATURES.includes(selectedFeature);
+      const requiresPremium = !isFreeFeature;
+      const locked = requiresPremium && !hasPremium;
+
+      function handleFileChange(event) {
+        const file = event.target.files && event.target.files[0] ? event.target.files[0] : null;
+        setSelectedFile(file || null);
+        setSelectedFileName(file ? file.name : '');
+        setGenerated(false);
+        setGeneratedImage('');
+        setErrorMessage('');
+      }
+
+      async function fileToBase64(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = typeof reader.result === 'string' ? reader.result : '';
+            const base64 = result.includes(',') ? result.split(',')[1] : result;
+            resolve(base64);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      }
+
+      async function handleGenerate() {
+        if (locked || !selectedFile) return;
+        setIsGenerating(true);
+        setErrorMessage('');
+        try {
+          const imageBase64 = await fileToBase64(selectedFile);
+          const response = await fetch(`${API_BASE}/api/generate`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              featureId: selectedFeature,
+              poseId: selectedPose,
+              location: locationInput,
+              wardrobe: wardrobeInput,
+              imageBase64,
+              mimeType: selectedFile.type || 'image/jpeg',
+            }),
+          });
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.error || 'Generation failed.');
+          }
+          setGeneratedImage(data.imageUrl || '');
+          setGenerated(true);
+        } catch (error) {
+          setErrorMessage(error.message || 'Something went wrong while generating the image.');
+          setGenerated(false);
+          setGeneratedImage('');
+        } finally {
+          setIsGenerating(false);
+        }
+      }
+
+      function handleUpgrade() {
+        window.location.href = STRIPE_CHECKOUT_URL;
+      }
+
+      return (
+        <div className="min-h-screen bg-slate-950 text-white">
+          <header className="border-b border-white/10 bg-slate-950/90 backdrop-blur">
+            <div className="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold tracking-tight">Holiday Focus Studio</div>
+                <div className="text-sm text-slate-400">AI-powered visual architect web experience</div>
+              </div>
+              <button
+                onClick={handleUpgrade}
+                className="rounded-2xl px-4 py-2 bg-white text-slate-950 font-medium"
+              >
+                {hasPremium ? 'Premium Active' : 'Upgrade $14.99'}
+              </button>
+            </div>
+          </header>
+
+          <section className="max-w-7xl mx-auto px-6 py-10 grid lg:grid-cols-2 gap-8 items-start">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-300">
+                <span aria-hidden="true">✨</span>
+                Create studio-quality visuals instantly
+              </div>
+              <h1 className="mt-5 text-4xl md:text-5xl font-bold leading-tight">
+                Turn one reference photo into headshots, editorials, and premium fashion visuals.
+              </h1>
+              <p className="mt-4 text-slate-300 text-lg leading-8 max-w-2xl">
+                Upload a photo, choose your style, select pose direction, and generate a polished result built around identity lock, realism, and fashion-forward art direction.
+              </p>
+              <div className="mt-8 grid sm:grid-cols-3 gap-4">
+                <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+                  <div className="text-2xl mb-3">📸</div>
+                  <div className="font-semibold">Identity Lock</div>
+                  <div className="text-sm text-slate-400 mt-2">Preserves facial features and proportions.</div>
+                </div>
+                <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+                  <div className="text-2xl mb-3">🖼️</div>
+                  <div className="font-semibold">Free + Premium</div>
+                  <div className="text-sm text-slate-400 mt-2">Three free options, advanced styles unlocked with upgrade.</div>
+                </div>
+                <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+                  <div className="text-2xl mb-3">🧍</div>
+                  <div className="font-semibold">Pose Profiles</div>
+                  <div className="text-sm text-slate-400 mt-2">Female, male, and non-binary pose logic built in.</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-[32px] border border-white/10 bg-white/5 p-5 shadow-2xl">
+              <div className="grid gap-6">
+                <div>
+                  <div className="text-lg font-semibold">1. Upload your reference image</div>
+                  <label className="mt-3 flex flex-col items-center justify-center border border-dashed border-white/20 rounded-3xl p-8 text-center bg-slate-900/60 cursor-pointer hover:border-white/40 transition">
+                    <div className="text-3xl mb-3 text-slate-300">⬆️</div>
+                    <span className="font-medium">Choose an image</span>
+                    <span className="text-sm text-slate-400 mt-1">Best results with a clear subject photo</span>
+                    <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
+                  </label>
+                  {selectedFileName && (
+                    <div className="mt-3 text-sm text-emerald-400 flex items-center gap-2">
+                      <span aria-hidden="true">✅</span> {selectedFileName}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <div className="text-lg font-semibold">2. Choose your image mode</div>
+                  <div className="mt-3 grid md:grid-cols-2 gap-3">
+                    {FEATURES.map((feature) => {
+                      const featureLocked = feature.tier === 'premium' && !hasPremium;
+                      const active = selectedFeature === feature.id;
+                      return (
+                        <button
+                          key={feature.id}
+                          onClick={() => setSelectedFeature(feature.id)}
+                          className={`text-left rounded-2xl p-4 border transition ${active ? 'border-white bg-white text-slate-950' : 'border-white/10 bg-slate-900/50 text-white'} ${featureLocked ? 'opacity-80' : ''}`}
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="font-semibold">{feature.label}</div>
+                            {featureLocked ? <span aria-hidden="true">🔒</span> : <span className="text-xs uppercase tracking-wide opacity-70">{feature.tier}</span>}
+                          </div>
+                          <div className={`text-sm mt-2 ${active ? 'text-slate-700' : 'text-slate-400'}`}>{feature.blurb}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="mt-3 text-sm text-slate-400">
+                    Free options include a 30% transparent "Holiday Focus Studio" watermark at the bottom of the image.
+                  </div>
+                  {locked && (
+                    <div className="mt-2 text-sm text-amber-300">
+                      This style is part of the premium plan.
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <div className="text-lg font-semibold">3. Choose pose direction</div>
+                  <div className="mt-3 grid md:grid-cols-3 gap-3">
+                    {POSE_OPTIONS.map((pose) => {
+                      const active = selectedPose === pose.id;
+                      return (
+                        <button
+                          key={pose.id}
+                          onClick={() => setSelectedPose(pose.id)}
+                          className={`rounded-2xl p-4 border text-left transition ${active ? 'border-emerald-400 bg-emerald-400/10' : 'border-white/10 bg-slate-900/50'}`}
+                        >
+                          <div className="font-semibold">{pose.label}</div>
+                          <div className="text-sm text-slate-400 mt-2">{pose.description}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-lg font-semibold">4. Customize your look</div>
+                  <div className="mt-3 grid md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm text-slate-300 mb-2">Location</label>
+                      <input
+                        type="text"
+                        value={locationInput}
+                        onChange={(event) => setLocationInput(event.target.value)}
+                        placeholder="Example: clean studio, rooftop, luxury lobby"
+                        className="w-full rounded-2xl bg-slate-900/60 border border-white/10 px-4 py-3 text-white placeholder-slate-500 outline-none focus:border-white/30"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-slate-300 mb-2">Wardrobe</label>
+                      <input
+                        type="text"
+                        value={wardrobeInput}
+                        onChange={(event) => setWardrobeInput(event.target.value)}
+                        placeholder="Example: black suit, casual denim, editorial dress"
+                        className="w-full rounded-2xl bg-slate-900/60 border border-white/10 px-4 py-3 text-white placeholder-slate-500 outline-none focus:border-white/30"
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-3 text-sm text-slate-400">
+                    You can customize location and wardrobe while the rest of the creative direction stays handled behind the scenes.
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleGenerate}
+                  disabled={locked || !selectedFile || isGenerating}
+                  className={`h-14 rounded-2xl font-semibold transition ${(locked || !selectedFile || isGenerating) ? 'bg-slate-700 text-slate-300 cursor-not-allowed' : 'bg-white text-slate-950 hover:opacity-95'}`}
+                >
+                  {locked ? 'Upgrade to unlock this feature' : isGenerating ? 'Generating...' : 'Generate Preview'}
+                </button>
+
+                {errorMessage && (
+                  <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                    {errorMessage}
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+
+          <section className="max-w-7xl mx-auto px-6 pb-16">
+            <div className="rounded-[32px] border border-white/10 bg-gradient-to-br from-slate-900 to-slate-800 p-6 md:p-8">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div>
+                  <div className="text-2xl font-bold">Result Preview</div>
+                  <div className="text-slate-400 mt-1">This section is ready to connect to your Gemini backend and Stripe-powered premium flow.</div>
+                </div>
+                <div className="text-sm text-slate-400">
+                  {generated ? 'Preview generated' : 'No preview generated yet'}
+                </div>
+              </div>
+              <div className="mt-6 rounded-[28px] border border-white/10 bg-slate-950 min-h-96 flex items-center justify-center overflow-hidden relative">
+                {!generated ? (
+                  <div className="text-center p-8">
+                    <div className="text-5xl mx-auto text-slate-600">🖼️</div>
+                    <div className="mt-4 text-lg font-medium">Your generated image will appear here</div>
+                    <div className="mt-2 text-slate-500 text-sm">Upload a photo, connect your backend, and this area will display the generated result.</div>
+                  </div>
+                ) : (
+                  <img
+                    src={generatedImage}
+                    alt="Generated result"
+                    className="w-full h-full object-contain"
+                  />
+                )}
+              </div>
+            </div>
+          </section>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<HolidayFocusStudioWebApp />);
+  </script>
+</body>
+</html>
