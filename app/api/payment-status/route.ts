@@ -21,7 +21,7 @@ export interface PaymentStatusResponse {
 }
 
 export async function GET() {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   // Confirm the user is authenticated
   const { data: { user }, error: authError } = await supabase.auth.getUser();
