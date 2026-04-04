@@ -37,6 +37,8 @@ export default function Header({ hasPremium, purchases, onUpgradeClick }: Header
     if (!supabase) return;
     await supabase.auth.signOut();
     setMenuOpen(false);
+    // Redirect to home — clears all image/generation state cleanly
+    window.location.href = '/';
   };
 
   return (

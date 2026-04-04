@@ -23,6 +23,7 @@ export default function Home() {
   const [step, setStep] = useState<AppStep>('idle');
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [uploadedMimeType, setUploadedMimeType] = useState('image/jpeg');
   const [selectedStyle, setSelectedStyle] = useState('professional_headshot');
   const [selectedPose, setSelectedPose] = useState('female');
   const [hasPremium, setHasPremium] = useState(false);
@@ -84,6 +85,27 @@ export default function Home() {
     }
   }, [fetchPremiumStatus]);
 
+  // ── Restore selections saved before login redirect ────────────────────
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem('hfs_pending');
+      if (!saved) return;
+      sessionStorage.removeItem('hfs_pending');
+      const state = JSON.parse(saved);
+      if (state.uploadedImage) {
+        setUploadedImage(state.uploadedImage);
+        setUploadedMimeType(state.uploadedMimeType || 'image/jpeg');
+        setSelectedStyle(state.selectedStyle || 'professional_headshot');
+        setSelectedPose(state.selectedPose || 'female');
+        setLocationInput(state.locationInput || '');
+        setWardrobeInput(state.wardrobeInput || '');
+        setStep('ready');
+      }
+    } catch {
+      // sessionStorage unavailable or corrupted — ignore
+    }
+  }, []);
+
   const styleRef = useRef<HTMLElement>(null);
   const resultRef = useRef<HTMLElement>(null);
 
@@ -96,6 +118,7 @@ export default function Home() {
   const handleImageUpload = useCallback((imageDataUrl: string, file: File) => {
     setUploadedImage(imageDataUrl);
     setUploadedFile(file);
+    setUploadedMimeType(file.type || 'image/jpeg');
     setStep('ready');
     setGeneratedImage(null);
     setErrorMessage('');
@@ -114,7 +137,7 @@ export default function Home() {
   );
 
   const handleGenerate = useCallback(async () => {
-    if (!uploadedFile || !uploadedImage) return;
+    if (!uploadedImage) return;
     // Gate: require login before generating
     if (!user) {
       setShowLoginPrompt(true);
@@ -135,7 +158,7 @@ export default function Home() {
           featureId: selectedStyle,
           poseId: selectedPose,
           imageBase64: base64,
-          mimeType: uploadedFile.type || 'image/jpeg',
+          mimeType: uploadedMimeType,
           location: locationInput || undefined,
           wardrobe: wardrobeInput || undefined,
         }),
@@ -157,7 +180,7 @@ export default function Home() {
         setStep('ready');
       }
     }
-  }, [uploadedFile, uploadedImage, selectedStyle, selectedPose, locationInput, wardrobeInput]);
+  }, [uploadedImage, uploadedMimeType, selectedStyle, selectedPose, locationInput, wardrobeInput]);
 
   const handleRegenerate = useCallback(() => {
     handleGenerate();
@@ -167,6 +190,7 @@ export default function Home() {
     setStep('idle');
     setUploadedImage(null);
     setUploadedFile(null);
+    setUploadedMimeType('image/jpeg');
     setGeneratedImage(null);
     setErrorMessage('');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -300,7 +324,22 @@ export default function Home() {
         )}
         {uploadedImage && !user && (
           <p className="mt-3 text-sm text-[#8888a0]">
-            <a href="/login" className="underline underline-offset-2 hover:text-white transition-colors">Sign in</a> to generate your image
+            <button
+              onClick={() => {
+                try {
+                  sessionStorage.setItem('hfs_pending', JSON.stringify({
+                    uploadedImage,
+                    uploadedMimeType,
+                    selectedStyle,
+                    selectedPose,
+                    locationInput,
+                    wardrobeInput,
+                  }));
+                } catch { /* ignore */ }
+                window.location.href = '/login';
+              }}
+              className="underline underline-offset-2 hover:text-white transition-colors"
+            >Sign in</button> to generate your image
           </p>
         )}
       </section>
@@ -376,8 +415,25 @@ export default function Home() {
               Create a free account to start generating AI photos.
             </p>
 
-            <a
-              href="/login"
+            <button
+              onClick={() => {
+                // Save current selections so they survive the login redirect
+                try {
+                  if (uploadedImage) {
+                    sessionStorage.setItem('hfs_pending', JSON.stringify({
+                      uploadedImage,
+                      uploadedMimeType,
+                      selectedStyle,
+                      selectedPose,
+                      locationInput,
+                      wardrobeInput,
+                    }));
+                  }
+                } catch {
+                  // sessionStorage full — proceed without saving
+                }
+                window.location.href = '/login';
+              }}
               className="flex items-center justify-center gap-3 w-full h-12 rounded-2xl font-medium text-sm text-white transition-all"
               style={{
                 background: 'linear-gradient(135deg,#6366f1,#8b5cf6)',
@@ -391,7 +447,7 @@ export default function Home() {
                 <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.962L3.964 7.294C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
               </svg>
               Continue with Google
-            </a>
+            </button>
 
             <button
               onClick={() => setShowLoginPrompt(false)}
