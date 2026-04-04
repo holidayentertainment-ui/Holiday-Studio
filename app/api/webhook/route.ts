@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Verify Stripe signature ───────────────────────────────────────────
-  const stripe = new Stripe(stripeSecretKey, { apiVersion: '2025-03-31.basil' });
+  const stripe = new Stripe(stripeSecretKey, { apiVersion: '2025-02-24.acacia' });
 
   let event: Stripe.Event;
   try {
