@@ -248,7 +248,13 @@ export default function Home() {
       window.location.href = '/login';
       return;
     }
-    window.open(STRIPE_URL, '_blank');
+    // Build Stripe URL with user ID + prefilled email
+    // client_reference_id lets the webhook find the user by ID regardless of
+    // which email they type in the Stripe form
+    const stripeUrl = new URL(STRIPE_URL);
+    stripeUrl.searchParams.set('client_reference_id', user.id);
+    if (user.email) stripeUrl.searchParams.set('prefilled_email', user.email);
+    window.open(stripeUrl.toString(), '_blank');
     setShowUpgradeModal(false);
   }, [user, uploadedImage, uploadedMimeType, selectedStyle, selectedPose, locationInput, wardrobeInput]);
 

@@ -21,6 +21,9 @@ export interface PaymentStatusResponse {
   purchases: Purchase[];
 }
 
+// Admin emails that always have full premium access without a purchase
+const ADMIN_EMAILS = ['holidayentertainment@gmail.com'];
+
 export async function GET() {
   const supabase = await createClient();
 
@@ -29,6 +32,21 @@ export async function GET() {
 
   if (authError || !user) {
     return NextResponse.json<PaymentStatusResponse>({ hasPremium: false, purchases: [] });
+  }
+
+  // Admin accounts always have premium — no purchase required
+  if (user.email && ADMIN_EMAILS.includes(user.email.toLowerCase())) {
+    return NextResponse.json<PaymentStatusResponse>({
+      hasPremium: true,
+      purchases: [{
+        id: 'admin',
+        plan_name: 'Admin Access',
+        amount_cents: 0,
+        currency: 'usd',
+        purchased_at: new Date().toISOString(),
+        status: 'completed',
+      }],
+    });
   }
 
   // Query by user_id OR by email — handles purchases saved before account linking

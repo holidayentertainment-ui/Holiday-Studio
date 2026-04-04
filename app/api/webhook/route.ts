@@ -53,6 +53,7 @@ export async function POST(req: NextRequest) {
       id: session.id,
       amount: session.amount_total,
       currency: session.currency,
+      client_reference_id: session.client_reference_id,
       customer_email: session.customer_email,
       customer_details_email: session.customer_details?.email,
     });
@@ -62,41 +63,61 @@ export async function POST(req: NextRequest) {
       session.customer_details?.email ??
       null;
 
-    if (!customerEmail) {
-      console.error('[webhook] No customer email found in session:', session.id);
-      return NextResponse.json({ received: true });
-    }
-
     // ── Use service role to bypass RLS ──────────────────────────────────
     const supabase = createClient(supabaseUrl, supabaseServiceKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // ── Try to find matching Supabase user by email ─────────────────────
-    // user_id is nullable — purchase is saved even if no match found
+    // ── Find user — client_reference_id first, email fallback ───────────
+    // client_reference_id = Supabase user.id, set when the user clicks Upgrade
+    // This works even if they type a different email in the Stripe form
     let userId: string | null = null;
 
-    try {
-      const { data: { users }, error: usersError } = await supabase.auth.admin.listUsers({
-        page: 1,
-        perPage: 1000,
-      });
+    const clientRefId = session.client_reference_id ?? null;
 
-      if (usersError) {
-        console.warn('[webhook] Could not fetch users (will save without user_id):', usersError.message);
-      } else {
-        const matched = users.find(
-          (u) => u.email?.toLowerCase() === customerEmail.toLowerCase(),
-        );
-        if (matched) {
-          userId = matched.id;
-          console.log('[webhook] Matched user:', matched.email, 'id:', matched.id);
+    if (clientRefId) {
+      // Primary: direct lookup by Supabase user ID — 100% reliable
+      try {
+        const { data: { user }, error } = await supabase.auth.admin.getUserById(clientRefId);
+        if (error || !user) {
+          console.warn('[webhook] getUserById failed:', error?.message);
         } else {
-          console.warn('[webhook] No Supabase user found for email:', customerEmail, '— saving by email only');
+          userId = user.id;
+          console.log('[webhook] Matched user by client_reference_id:', user.email, 'id:', user.id);
         }
+      } catch (e) {
+        console.warn('[webhook] getUserById threw:', e);
       }
-    } catch (e) {
-      console.warn('[webhook] User lookup failed (will save without user_id):', e);
+    }
+
+    if (!userId && customerEmail) {
+      // Fallback: match by email (covers old purchases or missing client_reference_id)
+      try {
+        const { data: { users }, error: usersError } = await supabase.auth.admin.listUsers({
+          page: 1,
+          perPage: 1000,
+        });
+        if (usersError) {
+          console.warn('[webhook] listUsers failed:', usersError.message);
+        } else {
+          const matched = users.find(
+            (u) => u.email?.toLowerCase() === customerEmail.toLowerCase(),
+          );
+          if (matched) {
+            userId = matched.id;
+            console.log('[webhook] Matched user by email fallback:', matched.email);
+          } else {
+            console.warn('[webhook] No user found by email either:', customerEmail);
+          }
+        }
+      } catch (e) {
+        console.warn('[webhook] Email fallback lookup failed:', e);
+      }
+    }
+
+    if (!userId && !customerEmail) {
+      console.error('[webhook] No client_reference_id and no customer email — cannot record purchase');
+      return NextResponse.json({ received: true });
     }
 
     // ── Insert purchase record — always saved regardless of user match ──
