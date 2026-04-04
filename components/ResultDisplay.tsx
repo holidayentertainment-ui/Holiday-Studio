@@ -187,7 +187,7 @@ export default function ResultDisplay({
                 onClick={onUpgrade}
                 className="btn-premium w-full h-10 rounded-xl text-sm"
               >
-                Upgrade — $14.99
+                Upgrade — $9.99
               </button>
             </div>
           )}

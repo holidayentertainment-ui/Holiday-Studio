@@ -16,6 +16,7 @@ export default function Header({ hasPremium, purchases, onUpgradeClick }: Header
   const [user, setUser] = useState<User | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showPurchaseHistory, setShowPurchaseHistory] = useState(false);
+  const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -105,7 +106,7 @@ export default function Header({ hasPremium, purchases, onUpgradeClick }: Header
             </div>
           ) : (
             <button onClick={onUpgradeClick} className="btn-premium px-4 py-2 rounded-xl text-sm">
-              Upgrade — $14.99
+              Upgrade — $9.99
             </button>
           )}
 
@@ -161,7 +162,7 @@ export default function Header({ hasPremium, purchases, onUpgradeClick }: Header
                     Purchase History
                   </button>
                   <button
-                    onClick={handleSignOut}
+                    onClick={() => { setShowSignOutConfirm(true); setMenuOpen(false); }}
                     className="w-full text-left px-4 py-2.5 text-sm text-[#8888a0] hover:text-white hover:bg-[rgba(255,255,255,0.05)] transition-colors"
                   >
                     Sign out
@@ -180,6 +181,42 @@ export default function Header({ hasPremium, purchases, onUpgradeClick }: Header
         </div>
       </div>
     </header>
+
+    {/* Sign out confirmation */}
+    {showSignOutConfirm && (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center px-4"
+        style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)' }}
+        onClick={() => setShowSignOutConfirm(false)}
+      >
+        <div
+          className="w-full max-w-xs rounded-3xl p-6 border"
+          style={{ background: 'rgba(14,14,22,0.98)', borderColor: 'rgba(255,255,255,0.1)' }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <h3 className="text-white text-base font-semibold text-center mb-2">Sign out?</h3>
+          <p className="text-[#8888a0] text-sm text-center mb-6">
+            You'll need to sign in again to generate images.
+          </p>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowSignOutConfirm(false)}
+              className="flex-1 h-10 rounded-2xl text-sm font-medium text-[#8888a0] hover:text-white transition-colors"
+              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => { setShowSignOutConfirm(false); handleSignOut(); }}
+              className="flex-1 h-10 rounded-2xl text-sm font-semibold text-white transition-colors"
+              style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.25)', color: '#f87171' }}
+            >
+              Sign out
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
 
     {/* Purchase History modal */}
     {showPurchaseHistory && (

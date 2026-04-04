@@ -127,7 +127,7 @@ export default function UpgradeModal({ onClose, onUpgrade }: UpgradeModalProps) 
 
             {/* Price */}
             <div className="flex items-baseline justify-center gap-1 mt-5">
-              <span className="text-4xl font-bold tracking-tight gradient-text-premium">$14.99</span>
+              <span className="text-4xl font-bold tracking-tight gradient-text-premium">$9.99</span>
               <span className="text-[#8888a0] text-sm">/ one-time</span>
             </div>
             <p className="text-xs text-[#44444f] mt-1">No subscription · Access forever</p>
@@ -164,7 +164,7 @@ export default function UpgradeModal({ onClose, onUpgrade }: UpgradeModalProps) 
           {/* CTA buttons */}
           <div className="space-y-3">
             <button onClick={onUpgrade} className="btn-premium w-full h-14 rounded-2xl text-base">
-              Upgrade Now — $14.99
+              Upgrade Now — $9.99
             </button>
             <button
               onClick={onClose}

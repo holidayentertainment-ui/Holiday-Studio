@@ -136,7 +136,7 @@ const StyleSelection = forwardRef<HTMLElement, StyleSelectionProps>(
             <div className="h-px flex-1 bg-[rgba(245,158,11,0.15)]" />
             {!hasPremium && (
               <span className="text-xs text-[#8888a0]">
-                Upgrade from $14.99
+                Upgrade from $9.99
               </span>
             )}
           </div>

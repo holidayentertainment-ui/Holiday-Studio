@@ -35,7 +35,9 @@ export default function Home() {
   const [locationInput, setLocationInput] = useState('');
   const [wardrobeInput, setWardrobeInput] = useState('');
   const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+  const pendingGenerateRef = useRef(false);
 
   // ── Fetch premium status from the server ──────────────────────────────
   const fetchPremiumStatus = useCallback(async () => {
@@ -58,6 +60,7 @@ export default function Home() {
     supabase.auth.getUser().then(({ data }) => {
       setUser(data.user);
       if (data.user) fetchPremiumStatus();
+      setAuthLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
@@ -84,6 +87,19 @@ export default function Home() {
       setTimeout(() => setShowPaymentSuccess(false), 6000);
     }
   }, [fetchPremiumStatus]);
+
+  // ── Fire pending generate once auth resolves ─────────────────────────
+  useEffect(() => {
+    if (authLoading) return;
+    if (!pendingGenerateRef.current) return;
+    pendingGenerateRef.current = false;
+    if (user) {
+      handleGenerate();
+    } else {
+      setShowLoginPrompt(true);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, user]);
 
   // ── Restore selections saved before login redirect ────────────────────
   useEffect(() => {
@@ -140,6 +156,11 @@ export default function Home() {
     if (!uploadedImage) return;
     // Gate: require login before generating
     if (!user) {
+      if (authLoading) {
+        // Auth still resolving — queue generate, fires automatically when done
+        pendingGenerateRef.current = true;
+        return;
+      }
       setShowLoginPrompt(true);
       return;
     }
@@ -180,7 +201,7 @@ export default function Home() {
         setStep('ready');
       }
     }
-  }, [uploadedImage, uploadedMimeType, selectedStyle, selectedPose, locationInput, wardrobeInput]);
+  }, [uploadedImage, uploadedMimeType, selectedStyle, selectedPose, locationInput, wardrobeInput, authLoading, user]);
 
   const handleRegenerate = useCallback(() => {
     handleGenerate();
