@@ -82,9 +82,13 @@ export default function Home() {
     if (params.get('payment') === 'success') {
       window.history.replaceState({}, '', '/');
       setShowPaymentSuccess(true);
-      // Wait briefly for the webhook to process, then refresh status
+      // Retry fetching premium status to handle webhook processing delay
+      // Stripe webhooks can take a few seconds — we try at 2s, 5s, and 10s
       setTimeout(() => fetchPremiumStatus(), 2000);
-      setTimeout(() => setShowPaymentSuccess(false), 6000);
+      setTimeout(() => fetchPremiumStatus(), 5000);
+      setTimeout(() => fetchPremiumStatus(), 10000);
+      // Keep the banner visible long enough for premium to activate
+      setTimeout(() => setShowPaymentSuccess(false), 14000);
     }
   }, [fetchPremiumStatus]);
 
@@ -101,13 +105,15 @@ export default function Home() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, user]);
 
-  // ── Restore selections saved before login redirect ────────────────────
+  // ── Restore state saved before login redirect ─────────────────────────
   useEffect(() => {
     try {
       const saved = sessionStorage.getItem('hfs_pending');
       if (!saved) return;
       sessionStorage.removeItem('hfs_pending');
       const state = JSON.parse(saved);
+
+      // Restore image selections if present
       if (state.uploadedImage) {
         setUploadedImage(state.uploadedImage);
         setUploadedMimeType(state.uploadedMimeType || 'image/jpeg');
@@ -116,6 +122,11 @@ export default function Home() {
         setLocationInput(state.locationInput || '');
         setWardrobeInput(state.wardrobeInput || '');
         setStep('ready');
+      }
+
+      // If user came back from login to complete a purchase, open Stripe
+      if (state.pendingStripe) {
+        setTimeout(() => window.open(STRIPE_URL, '_blank'), 800);
       }
     } catch {
       // sessionStorage unavailable or corrupted — ignore
@@ -218,9 +229,28 @@ export default function Home() {
   }, []);
 
   const handleUpgrade = useCallback(() => {
+    if (!user) {
+      // Not logged in — save Stripe intent (+ any image state) and go to login first
+      try {
+        sessionStorage.setItem('hfs_pending', JSON.stringify({
+          pendingStripe: true,
+          ...(uploadedImage ? {
+            uploadedImage,
+            uploadedMimeType,
+            selectedStyle,
+            selectedPose,
+            locationInput,
+            wardrobeInput,
+          } : {}),
+        }));
+      } catch { /* sessionStorage full — proceed without saving */ }
+      setShowUpgradeModal(false);
+      window.location.href = '/login';
+      return;
+    }
     window.open(STRIPE_URL, '_blank');
     setShowUpgradeModal(false);
-  }, []);
+  }, [user, uploadedImage, uploadedMimeType, selectedStyle, selectedPose, locationInput, wardrobeInput]);
 
   const canGenerate = step === 'ready' && !!uploadedImage;
 
