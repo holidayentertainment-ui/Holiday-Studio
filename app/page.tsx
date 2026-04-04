@@ -11,6 +11,7 @@ import ResultDisplay from '@/components/ResultDisplay';
 import UpgradeModal from '@/components/UpgradeModal';
 import { createClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
+import type { Purchase } from '@/app/api/payment-status/route';
 
 export type AppStep = 'idle' | 'ready' | 'generating' | 'result';
 
@@ -25,7 +26,9 @@ export default function Home() {
   const [selectedStyle, setSelectedStyle] = useState('professional_headshot');
   const [selectedPose, setSelectedPose] = useState('female');
   const [hasPremium, setHasPremium] = useState(false);
+  const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [locationInput, setLocationInput] = useState('');
@@ -33,15 +36,53 @@ export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
 
+  // ── Fetch premium status from the server ──────────────────────────────
+  const fetchPremiumStatus = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/payment-status`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setHasPremium(data.hasPremium ?? false);
+      setPurchases(data.purchases ?? []);
+    } catch {
+      // Non-blocking — silently fail
+    }
+  }, []);
+
+  // ── Auth listener + premium check on login ────────────────────────────
   useEffect(() => {
     const supabase = createClient();
     if (!supabase) return;
-    supabase.auth.getUser().then(({ data }) => setUser(data.user));
+
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data.user);
+      if (data.user) fetchPremiumStatus();
+    });
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
       setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchPremiumStatus();
+      } else {
+        setHasPremium(false);
+        setPurchases([]);
+      }
     });
+
     return () => subscription.unsubscribe();
-  }, []);
+  }, [fetchPremiumStatus]);
+
+  // ── Handle Stripe redirect: ?payment=success ──────────────────────────
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('payment') === 'success') {
+      window.history.replaceState({}, '', '/');
+      setShowPaymentSuccess(true);
+      // Wait briefly for the webhook to process, then refresh status
+      setTimeout(() => fetchPremiumStatus(), 2000);
+      setTimeout(() => setShowPaymentSuccess(false), 6000);
+    }
+  }, [fetchPremiumStatus]);
 
   const styleRef = useRef<HTMLElement>(null);
   const resultRef = useRef<HTMLElement>(null);
@@ -140,7 +181,31 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#07070d] text-white overflow-x-hidden">
-      <Header hasPremium={hasPremium} onUpgradeClick={() => setShowUpgradeModal(true)} />
+
+      {/* Payment success banner */}
+      {showPaymentSuccess && (
+        <div
+          className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-3 px-5 py-3 rounded-2xl shadow-xl"
+          style={{
+            background: 'rgba(16,185,129,0.15)',
+            border: '1px solid rgba(16,185,129,0.3)',
+            backdropFilter: 'blur(16px)',
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M3 8l3.5 3.5L13 4.5" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <span className="text-sm font-semibold text-emerald-300">
+            Payment successful — Premium unlocked!
+          </span>
+        </div>
+      )}
+
+      <Header
+        hasPremium={hasPremium}
+        purchases={purchases}
+        onUpgradeClick={() => setShowUpgradeModal(true)}
+      />
 
       <Hero
         onUploadClick={() => {

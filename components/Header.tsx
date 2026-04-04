@@ -3,15 +3,19 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
+import PurchaseHistory from '@/components/PurchaseHistory';
+import type { Purchase } from '@/app/api/payment-status/route';
 
 interface HeaderProps {
   hasPremium: boolean;
+  purchases: Purchase[];
   onUpgradeClick: () => void;
 }
 
-export default function Header({ hasPremium, onUpgradeClick }: HeaderProps) {
+export default function Header({ hasPremium, purchases, onUpgradeClick }: HeaderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showPurchaseHistory, setShowPurchaseHistory] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -36,6 +40,7 @@ export default function Header({ hasPremium, onUpgradeClick }: HeaderProps) {
   };
 
   return (
+    <>
     <header
       className="sticky top-0 z-50 w-full border-b border-[rgba(255,255,255,0.05)]"
       style={{ background: 'rgba(7,7,13,0.85)', backdropFilter: 'blur(20px)' }}
@@ -140,6 +145,20 @@ export default function Header({ hasPremium, onUpgradeClick }: HeaderProps) {
                     <p className="text-xs text-[#8888a0] truncate">{user.email}</p>
                   </div>
                   <button
+                    onClick={() => { setShowPurchaseHistory(true); setMenuOpen(false); }}
+                    className="w-full text-left px-4 py-2.5 text-sm text-[#8888a0] hover:text-white hover:bg-[rgba(255,255,255,0.05)] transition-colors flex items-center gap-2"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                      <path
+                        d="M1.5 4h10M1.5 4a.75.75 0 00-.75.75v6.5c0 .414.336.75.75.75h10a.75.75 0 00.75-.75v-6.5A.75.75 0 0011.5 4M1.5 4V3a1.5 1.5 0 011.5-1.5h7A1.5 1.5 0 0111.5 3v1"
+                        stroke="currentColor"
+                        strokeWidth="1.2"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                    Purchase History
+                  </button>
+                  <button
                     onClick={handleSignOut}
                     className="w-full text-left px-4 py-2.5 text-sm text-[#8888a0] hover:text-white hover:bg-[rgba(255,255,255,0.05)] transition-colors"
                   >
@@ -159,5 +178,14 @@ export default function Header({ hasPremium, onUpgradeClick }: HeaderProps) {
         </div>
       </div>
     </header>
+
+    {/* Purchase History modal */}
+    {showPurchaseHistory && (
+      <PurchaseHistory
+        purchases={purchases}
+        onClose={() => setShowPurchaseHistory(false)}
+      />
+    )}
+    </>
   );
 }

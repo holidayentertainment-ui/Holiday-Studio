@@ -153,9 +153,9 @@ const StyleSelection = forwardRef<HTMLElement, StyleSelectionProps>(
           </div>
         </div>
 
-        {/* Watermark note */}
+        {/* Free vs Premium note */}
         <p className="mt-5 text-xs text-[#44444f] text-center">
-          Free styles include a semi-transparent Holiday Focus Studio watermark · Upgrade to remove
+          3 styles available free · Upgrade to unlock all 7 premium styles
         </p>
       </section>
     );

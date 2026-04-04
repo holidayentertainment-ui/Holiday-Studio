@@ -9,9 +9,9 @@ const BENEFITS = [
     desc: 'Full Editorial, Beauty, High Fashion, Cinematic Portrait, and more.',
   },
   {
-    icon: '🚫',
-    title: 'Zero Watermarks',
-    desc: 'Download clean, professional-quality images every time.',
+    icon: '📥',
+    title: 'Unlimited Downloads',
+    desc: 'Download full-resolution, professional-quality images every time.',
   },
   {
     icon: '🎨',

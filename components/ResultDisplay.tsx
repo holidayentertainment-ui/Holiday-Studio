@@ -12,6 +12,8 @@ const STYLE_LABELS: Record<string, string> = {
   cinematic_portrait: 'Cinematic Portrait',
 };
 
+const FREE_STYLES = ['professional_headshot', 'model_casting', 'quarter_editorial'];
+
 interface ResultDisplayProps {
   generatedImage: string;
   hasPremium: boolean;
@@ -39,8 +41,7 @@ export default function ResultDisplay({
   };
 
   const styleName = STYLE_LABELS[selectedStyle] || 'Editorial';
-  const isFreeStyle = ['professional_headshot', 'model_casting', 'quarter_editorial'].includes(selectedStyle);
-  const showWatermark = isFreeStyle && !hasPremium;
+  const isFreeStyle = FREE_STYLES.includes(selectedStyle);
 
   return (
     <section className="max-w-7xl mx-auto px-6 section-spacing animate-fade-up">
@@ -87,30 +88,6 @@ export default function ResultDisplay({
             style={{ maxHeight: 700, display: 'block' }}
           />
 
-          {/* Watermark overlay */}
-          {showWatermark && (
-            <div className="watermark-overlay">
-              <div
-                className="flex items-center gap-2 px-4 py-2 rounded-full"
-                style={{
-                  background: 'rgba(7,7,13,0.75)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  backdropFilter: 'blur(8px)',
-                }}
-              >
-                <div
-                  className="w-4 h-4 rounded flex items-center justify-center"
-                  style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}
-                >
-                  <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-                    <path d="M4 1L7 4 4 7 1 4Z" fill="white" fillOpacity="0.9" />
-                  </svg>
-                </div>
-                <span className="text-xs font-medium text-white/60">Holiday Focus Studio</span>
-              </div>
-            </div>
-          )}
-
           {/* Premium badge */}
           {!isFreeStyle && hasPremium && (
             <div className="absolute top-4 right-4">
@@ -128,7 +105,7 @@ export default function ResultDisplay({
                     fill="rgba(245,158,11,0.9)"
                   />
                 </svg>
-                <span className="text-[11px] font-semibold text-amber-400">Premium Export</span>
+                <span className="text-[11px] font-semibold text-amber-400">Premium</span>
               </div>
             </div>
           )}
@@ -162,38 +139,31 @@ export default function ResultDisplay({
             <h3 className="text-sm font-semibold text-[#8888a0] uppercase tracking-widest mb-4">
               Export
             </h3>
-            <div className="flex flex-col gap-3">
-              <button
-                onClick={handleDownload}
-                className="btn-primary h-12 rounded-2xl text-sm font-semibold w-full"
+            <button
+              onClick={handleDownload}
+              className="btn-primary h-12 rounded-2xl text-sm font-semibold w-full"
+            >
+              <svg
+                className="inline mr-2 -mt-0.5"
+                width="14"
+                height="14"
+                viewBox="0 0 14 14"
+                fill="none"
               >
-                <svg
-                  className="inline mr-2 -mt-0.5"
-                  width="14"
-                  height="14"
-                  viewBox="0 0 14 14"
-                  fill="none"
-                >
-                  <path
-                    d="M7 2v7M4 7l3 3 3-3M2 12h10"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-                Download Image
-              </button>
-              {showWatermark && (
-                <p className="text-xs text-[#8888a0] text-center">
-                  Includes watermark on free styles
-                </p>
-              )}
-            </div>
+                <path
+                  d="M7 2v7M4 7l3 3 3-3M2 12h10"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              Download Image
+            </button>
           </div>
 
-          {/* Upgrade prompt (free users) */}
-          {showWatermark && (
+          {/* Upgrade prompt — shown to non-premium users trying premium styles */}
+          {!isFreeStyle && !hasPremium && (
             <div
               className="rounded-3xl p-5"
               style={{
@@ -208,10 +178,10 @@ export default function ResultDisplay({
                     fill="rgba(245,158,11,0.8)"
                   />
                 </svg>
-                <span className="text-sm font-semibold text-amber-300">Remove Watermark</span>
+                <span className="text-sm font-semibold text-amber-300">Unlock Premium Styles</span>
               </div>
               <p className="text-xs text-[#8888a0] mb-4 leading-relaxed">
-                Upgrade to Premium to download clean, watermark-free exports and unlock all styles.
+                Upgrade to Premium to access all editorial styles and generate unlimited images.
               </p>
               <button
                 onClick={onUpgrade}
@@ -291,7 +261,7 @@ export default function ResultDisplay({
             {[
               { label: 'Style', value: styleName },
               { label: 'Tier', value: isFreeStyle ? 'Free' : 'Premium' },
-              { label: 'Watermark', value: showWatermark ? 'Visible' : 'None' },
+              { label: 'Quality', value: 'High Resolution' },
             ].map((row) => (
               <div
                 key={row.label}
