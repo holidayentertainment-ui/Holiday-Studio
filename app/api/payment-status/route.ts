@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 
 // ── Payment status endpoint ────────────────────────────────────────────────
 // Returns hasPremium flag + purchase history for the logged-in user
+// Checks by user_id first, then falls back to email match
 // Stripe session IDs are never returned — only display-safe fields
 // ──────────────────────────────────────────────────────────────────────────
 
@@ -30,11 +31,11 @@ export async function GET() {
     return NextResponse.json<PaymentStatusResponse>({ hasPremium: false, purchases: [] });
   }
 
-  // Fetch completed purchases for this user — stripe_session_id is excluded
+  // Query by user_id OR by email — handles purchases saved before account linking
   const { data: purchases, error: dbError } = await supabase
     .from('purchases')
     .select('id, plan_name, amount_cents, currency, purchased_at, status')
-    .eq('user_id', user.id)
+    .or(`user_id.eq.${user.id},user_email.eq.${user.email}`)
     .eq('status', 'completed')
     .order('purchased_at', { ascending: false });
 
@@ -43,10 +44,18 @@ export async function GET() {
     return NextResponse.json<PaymentStatusResponse>({ hasPremium: false, purchases: [] });
   }
 
-  const hasPremium = (purchases?.length ?? 0) > 0;
+  // De-duplicate in case both user_id and email matched the same row
+  const seen = new Set<string>();
+  const unique = (purchases ?? []).filter((p) => {
+    if (seen.has(p.id)) return false;
+    seen.add(p.id);
+    return true;
+  });
+
+  const hasPremium = unique.length > 0;
 
   return NextResponse.json<PaymentStatusResponse>({
     hasPremium,
-    purchases: purchases ?? [],
+    purchases: unique,
   });
 }
