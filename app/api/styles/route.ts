@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
 
+// Never cache this route — style visibility changes must reflect immediately
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 /**
  * GET /api/styles
  * Public endpoint — returns all active styles ordered by sort_order.

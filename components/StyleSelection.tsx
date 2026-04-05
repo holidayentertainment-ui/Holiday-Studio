@@ -24,7 +24,7 @@ const StyleSelection = forwardRef<HTMLElement, StyleSelectionProps>(
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-      fetch('/api/styles')
+      fetch('/api/styles', { cache: 'no-store' })
         .then((r) => r.json())
         .then((data) => setStyles(data.styles ?? []))
         .catch(() => setStyles([]))
