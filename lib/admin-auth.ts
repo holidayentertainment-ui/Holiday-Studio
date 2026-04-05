@@ -30,11 +30,12 @@ export async function getAdminUser(): Promise<AdminUser | null> {
 
     const { data: roleRow } = await serviceClient
       .from('user_roles')
-      .select('role')
+      .select('role, is_active')
       .eq('email', user.email)
       .single();
 
-    if (!roleRow) return null;
+    // No role found, or role has been suspended
+    if (!roleRow || roleRow.is_active === false) return null;
 
     return {
       id: user.id,

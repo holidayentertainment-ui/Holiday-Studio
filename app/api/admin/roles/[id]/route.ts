@@ -3,7 +3,7 @@ import { getAdminUser, getServiceClient } from '@/lib/admin-auth';
 
 /**
  * PATCH /api/admin/roles/[id]
- * Updates the role for a user_roles entry.
+ * Updates a user_roles entry — supports changing role or toggling is_active.
  */
 export async function PATCH(
   req: NextRequest,
@@ -14,16 +14,28 @@ export async function PATCH(
 
   const { id } = await params;
   const body = await req.json();
-  const { role } = body;
 
-  if (!['admin', 'team_member'].includes(role)) {
-    return NextResponse.json({ error: 'Role must be admin or team_member.' }, { status: 400 });
+  const updates: Record<string, unknown> = {};
+
+  if ('role' in body) {
+    if (!['admin', 'team_member'].includes(body.role)) {
+      return NextResponse.json({ error: 'Role must be admin or team_member.' }, { status: 400 });
+    }
+    updates.role = body.role;
+  }
+
+  if ('is_active' in body) {
+    updates.is_active = Boolean(body.is_active);
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return NextResponse.json({ error: 'No valid fields to update.' }, { status: 400 });
   }
 
   const db = getServiceClient();
   const { data, error } = await db
     .from('user_roles')
-    .update({ role })
+    .update(updates)
     .eq('id', id)
     .select()
     .single();
@@ -36,7 +48,7 @@ export async function PATCH(
 
 /**
  * DELETE /api/admin/roles/[id]
- * Removes a role entry (revokes access).
+ * Removes a role entry (revokes access entirely).
  */
 export async function DELETE(
   _req: NextRequest,

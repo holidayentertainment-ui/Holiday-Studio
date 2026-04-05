@@ -15,7 +15,10 @@ export async function PATCH(
   const { id } = await params;
   const body = await req.json();
 
-  const allowed = ['title', 'prompt', 'is_premium', 'is_active', 'sort_order', 'thumbnail_url'];
+  const allowed = [
+    'title', 'prompt', 'is_premium', 'is_active',
+    'sort_order', 'thumbnail_url', 'icon', 'blurb', 'mood',
+  ];
   const updates: Record<string, unknown> = {};
 
   for (const key of allowed) {

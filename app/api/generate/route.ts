@@ -1,5 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
+import { createClient as createServiceClient } from '@supabase/supabase-js';
+
+// UUID v4 pattern — used to detect DB-managed style IDs
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Fetches the prompt for a style from the database when a UUID is provided.
+ * Returns null if the style is not found or if the prompt is empty.
+ */
+async function fetchDbPrompt(styleId: string): Promise<string | null> {
+  try {
+    const db = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    );
+    const { data } = await db
+      .from('styles')
+      .select('prompt')
+      .eq('id', styleId)
+      .eq('is_active', true)
+      .single();
+
+    return data?.prompt?.trim() || null;
+  } catch {
+    return null;
+  }
+}
 
 // ── Available image generation models ────────────────────────────────────
 // Nano Banana (stable)    — fast, cost-efficient, production-ready
@@ -263,7 +290,28 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Build prompt ──
-    const prompt = assemblePrompt(featureId, poseId, location, wardrobe);
+    // If featureId is a UUID, fetch the prompt from the database.
+    // Otherwise fall back to the hardcoded prompt builders (legacy support).
+    let prompt: string;
+
+    if (UUID_RE.test(featureId)) {
+      const dbPrompt = await fetchDbPrompt(featureId);
+      if (dbPrompt) {
+        // Wrap DB prompt with optional location/wardrobe overrides and negative constraints
+        const parts: string[] = [dbPrompt];
+        if (location?.trim()) parts.push(`Location / Background override: ${location.trim()}.`);
+        if (wardrobe?.trim()) parts.push(`Wardrobe / Styling override: ${wardrobe.trim()}.`);
+        parts.push(buildNegativeConstraints());
+        prompt = parts.join('\n\n');
+      } else {
+        // UUID style not found in DB — use generic fallback
+        prompt = assemblePrompt('professional_headshot', poseId, location, wardrobe);
+        console.warn(`[generate] DB style not found for id=${featureId}, using fallback`);
+      }
+    } else {
+      // Legacy hardcoded style ID
+      prompt = assemblePrompt(featureId, poseId, location, wardrobe);
+    }
 
     console.log(`[generate] model=${ACTIVE_MODEL} feature=${featureId} pose=${poseId}`);
 

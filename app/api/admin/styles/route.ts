@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body = await req.json();
-  const { title, prompt, is_premium, is_active, sort_order, thumbnail_url } = body;
+  const { title, prompt, is_premium, is_active, sort_order, thumbnail_url, icon, blurb, mood } = body;
 
   if (!title?.trim()) {
     return NextResponse.json({ error: 'Title is required.' }, { status: 400 });
@@ -45,6 +45,9 @@ export async function POST(req: NextRequest) {
       is_active: is_active !== false,
       sort_order: Number(sort_order ?? 0),
       thumbnail_url: thumbnail_url?.trim() || null,
+      icon: (icon ?? '🖼️').trim(),
+      blurb: (blurb ?? '').trim(),
+      mood: (mood ?? '').trim(),
     })
     .select()
     .single();
