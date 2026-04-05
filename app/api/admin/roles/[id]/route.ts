@@ -25,6 +25,21 @@ export async function PATCH(
   }
 
   if ('is_active' in body) {
+    // Fetch the current entry to enforce protection rules
+    const db2 = getServiceClient();
+    const { data: current } = await db2
+      .from('user_roles')
+      .select('role, email')
+      .eq('id', id)
+      .single();
+
+    if (current?.role === 'admin') {
+      return NextResponse.json(
+        { error: 'Admin accounts cannot be suspended.' },
+        { status: 403 },
+      );
+    }
+
     updates.is_active = Boolean(body.is_active);
   }
 

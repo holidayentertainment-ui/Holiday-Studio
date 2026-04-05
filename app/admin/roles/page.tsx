@@ -64,17 +64,13 @@ function Spinner({ size = 14 }: { size?: number }) {
 
 function SkeletonRow() {
   return (
-    <div className="grid items-center px-5 py-4" style={{ gridTemplateColumns: '1fr 140px 110px 90px' }}>
+    <div className="grid items-center px-5 py-4" style={{ gridTemplateColumns: '1fr 140px 130px' }}>
       <div className="flex items-center gap-3">
         <div className="w-8 h-8 rounded-full animate-pulse bg-[rgba(255,255,255,0.07)] shrink-0" />
         <div className="h-3.5 rounded-lg animate-pulse bg-[rgba(255,255,255,0.07)] w-44" />
       </div>
       <div className="h-6 w-24 rounded-full animate-pulse bg-[rgba(255,255,255,0.05)]" />
-      <div className="h-6 w-16 rounded-full animate-pulse bg-[rgba(255,255,255,0.05)]" />
-      <div className="flex justify-end gap-1.5">
-        <div className="w-8 h-8 rounded-lg animate-pulse bg-[rgba(255,255,255,0.04)]" />
-        <div className="w-8 h-8 rounded-lg animate-pulse bg-[rgba(255,255,255,0.04)]" />
-      </div>
+      <div className="h-6 w-20 rounded-full animate-pulse bg-[rgba(255,255,255,0.05)]" />
     </div>
   );
 }
@@ -82,14 +78,13 @@ function SkeletonRow() {
 export default function AdminRolesPage() {
   const [roles, setRoles] = useState<RoleEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState({ email: '', role: 'team_member' });
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editRole, setEditRole] = useState<string>('team_member');
   const [togglingId, setTogglingId] = useState<string | null>(null);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
   const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
@@ -108,7 +103,21 @@ export default function AdminRolesPage() {
     }
   }, []);
 
+  // Load current user's email so we can protect the self-account row
+  useEffect(() => {
+    fetch('/api/admin/check')
+      .then((r) => r.json())
+      .then((data) => setCurrentUserEmail(data.email ?? null))
+      .catch(() => {});
+  }, []);
+
   useEffect(() => { loadRoles(); }, [loadRoles]);
+
+  // A row's toggle is protected if:
+  //   1. The entry is an admin role (admins can't be suspended), OR
+  //   2. The entry belongs to the currently logged-in user (can't suspend yourself)
+  const isToggleProtected = (entry: RoleEntry) =>
+    entry.role === 'admin' || entry.email === currentUserEmail;
 
   const handleAdd = async () => {
     if (!form.email.trim()) { showToast('Email is required.', 'error'); return; }
@@ -166,23 +175,6 @@ export default function AdminRolesPage() {
     }
   };
 
-  const handleDelete = async () => {
-    if (!deleteConfirmId) return;
-    setDeleting(true);
-    try {
-      const res = await fetch(`/api/admin/roles/${deleteConfirmId}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Failed to revoke access.');
-      showToast('Access revoked.');
-      setDeleteConfirmId(null);
-      loadRoles();
-    } catch (e) {
-      showToast((e as Error).message, 'error');
-    } finally {
-      setDeleting(false);
-    }
-  };
-
-  const entryToDelete = roles.find((r) => r.id === deleteConfirmId);
   const activeCount = roles.filter((r) => r.is_active).length;
 
   const formatDate = (iso: string) =>
@@ -224,7 +216,8 @@ export default function AdminRolesPage() {
         </svg>
         <p className="text-[#a5b4fc]">
           Both <strong>Admin</strong> and <strong>Team Member</strong> roles have full panel access.
-          Suspend a member to temporarily block their access without removing them.
+          Suspend a team member to temporarily block their access without removing them.
+          Admin accounts and your own account cannot be suspended.
         </p>
       </div>
 
@@ -236,12 +229,11 @@ export default function AdminRolesPage() {
         {/* Table header */}
         <div
           className="grid items-center px-5 py-3 text-xs font-semibold uppercase tracking-widest text-[#8888a0] border-b"
-          style={{ gridTemplateColumns: '1fr 140px 110px 90px', borderColor: 'rgba(255,255,255,0.06)' }}
+          style={{ gridTemplateColumns: '1fr 140px 130px', borderColor: 'rgba(255,255,255,0.06)' }}
         >
           <span>Email</span>
           <span>Role</span>
           <span>Access</span>
-          <span className="text-right">Actions</span>
         </div>
 
         {/* Loading */}
@@ -270,18 +262,20 @@ export default function AdminRolesPage() {
           : roles.map((entry, idx) => {
             const roleMeta = ROLE_META[entry.role];
             const isEditing = editingId === entry.id;
+            const protected_ = isToggleProtected(entry);
+            const isSelf = entry.email === currentUserEmail;
 
             return (
               <div
                 key={entry.id}
                 className="grid items-center px-5 py-4 transition-colors hover:bg-[rgba(255,255,255,0.02)]"
                 style={{
-                  gridTemplateColumns: '1fr 140px 110px 90px',
+                  gridTemplateColumns: '1fr 140px 130px',
                   borderBottom: idx < roles.length - 1 ? '1px solid rgba(255,255,255,0.04)' : undefined,
                   opacity: entry.is_active ? 1 : 0.55,
                 }}
               >
-                {/* Email */}
+                {/* Email + meta */}
                 <div className="flex items-center gap-3 min-w-0">
                   <div
                     className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
@@ -290,7 +284,17 @@ export default function AdminRolesPage() {
                     {entry.email[0].toUpperCase()}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm text-white truncate">{entry.email}</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm text-white truncate">{entry.email}</p>
+                      {isSelf && (
+                        <span
+                          className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0"
+                          style={{ background: 'rgba(99,102,241,0.12)', color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.2)' }}
+                        >
+                          You
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-[#44444f]">Added {formatDate(entry.created_at)}</p>
                   </div>
                 </div>
@@ -336,41 +340,44 @@ export default function AdminRolesPage() {
                   )}
                 </div>
 
-                {/* Access toggle (active / suspended) */}
+                {/* Access toggle — only shown for non-protected rows */}
                 <div>
-                  <button
-                    onClick={() => handleToggleActive(entry)}
-                    disabled={togglingId === entry.id}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all disabled:opacity-60"
-                    style={entry.is_active
-                      ? { background: 'rgba(16,185,129,0.1)', color: '#34d399', border: '1px solid rgba(16,185,129,0.2)' }
-                      : { background: 'rgba(239,68,68,0.08)', color: '#f87171', border: '1px solid rgba(239,68,68,0.15)' }
-                    }
-                    title={entry.is_active ? 'Click to suspend' : 'Click to restore'}
-                  >
-                    {togglingId === entry.id ? (
-                      <Spinner size={10} />
-                    ) : (
-                      <span
-                        className="w-1.5 h-1.5 rounded-full"
-                        style={{ background: entry.is_active ? '#34d399' : '#f87171' }}
-                      />
-                    )}
-                    {entry.is_active ? 'Active' : 'Suspended'}
-                  </button>
-                </div>
-
-                {/* Actions */}
-                <div className="flex items-center justify-end gap-1.5">
-                  <button
-                    onClick={() => setDeleteConfirmId(entry.id)}
-                    className="w-8 h-8 flex items-center justify-center rounded-lg text-[#8888a0] hover:text-red-400 hover:bg-[rgba(239,68,68,0.08)] transition-colors"
-                    title="Remove access"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                      <path d="M2 3.5h10M5.5 3.5V2.5h3v1M4 3.5l.75 8h4.5L10 3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </button>
+                  {protected_ ? (
+                    /* Show a static "Active" badge with a lock hint — no clickable toggle */
+                    <div
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold"
+                      style={{ background: 'rgba(16,185,129,0.08)', color: 'rgba(52,211,153,0.5)', border: '1px solid rgba(16,185,129,0.12)', cursor: 'default' }}
+                      title={entry.role === 'admin' ? 'Admin accounts cannot be suspended' : 'You cannot suspend your own account'}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400/50" />
+                      Active
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className="opacity-40 ml-0.5">
+                        <rect x="2" y="4.5" width="6" height="4.5" rx="1" stroke="currentColor" strokeWidth="1.2" />
+                        <path d="M3.5 4.5V3a1.5 1.5 0 013 0v1.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                      </svg>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => handleToggleActive(entry)}
+                      disabled={togglingId === entry.id}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all disabled:opacity-60"
+                      style={entry.is_active
+                        ? { background: 'rgba(16,185,129,0.1)', color: '#34d399', border: '1px solid rgba(16,185,129,0.2)' }
+                        : { background: 'rgba(239,68,68,0.08)', color: '#f87171', border: '1px solid rgba(239,68,68,0.15)' }
+                      }
+                      title={entry.is_active ? 'Click to suspend' : 'Click to restore'}
+                    >
+                      {togglingId === entry.id ? (
+                        <Spinner size={10} />
+                      ) : (
+                        <span
+                          className="w-1.5 h-1.5 rounded-full"
+                          style={{ background: entry.is_active ? '#34d399' : '#f87171' }}
+                        />
+                      )}
+                      {entry.is_active ? 'Active' : 'Suspended'}
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -462,58 +469,6 @@ export default function AdminRolesPage() {
               >
                 {saving && <Spinner size={14} />}
                 {saving ? 'Adding…' : 'Grant Access'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Revoke Confirm Modal ────────────────────────────────────────────── */}
-      {deleteConfirmId && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center px-4"
-          style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }}
-          onClick={() => !deleting && setDeleteConfirmId(null)}
-        >
-          <div
-            className="w-full max-w-sm rounded-3xl p-6 border"
-            style={{ background: 'rgba(12,12,20,0.99)', borderColor: 'rgba(255,255,255,0.1)' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div
-              className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-4"
-              style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.2)' }}
-            >
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                <circle cx="8" cy="7" r="3" stroke="#f87171" strokeWidth="1.5" />
-                <path d="M2 17c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke="#f87171" strokeWidth="1.5" strokeLinecap="round" />
-                <path d="M15 9.5l3 3M18 9.5l-3 3" stroke="#f87171" strokeWidth="1.5" strokeLinecap="round" />
-              </svg>
-            </div>
-            <h3 className="text-white text-base font-semibold text-center mb-2">Remove Access?</h3>
-            <p className="text-[#8888a0] text-sm text-center mb-2">
-              <span className="text-white font-medium">{entryToDelete?.email}</span> will be permanently removed from the admin panel.
-            </p>
-            <p className="text-[#44444f] text-xs text-center mb-6">
-              Tip: Use "Suspend" to temporarily block access instead.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setDeleteConfirmId(null)}
-                disabled={deleting}
-                className="flex-1 h-10 rounded-2xl text-sm font-medium text-[#8888a0] hover:text-white transition-colors disabled:opacity-40"
-                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                className="flex-1 h-10 rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
-                style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.25)', color: '#f87171' }}
-              >
-                {deleting && <Spinner size={13} />}
-                {deleting ? 'Removing…' : 'Remove'}
               </button>
             </div>
           </div>

@@ -64,7 +64,7 @@ function SkeletonRow() {
   return (
     <div
       className="grid items-center px-5 py-4"
-      style={{ gridTemplateColumns: '56px 2fr 1fr 1fr 80px 96px' }}
+      style={{ gridTemplateColumns: '56px 2fr 1fr 1fr 80px 56px' }}
     >
       <div className="w-9 h-9 rounded-xl animate-pulse bg-[rgba(255,255,255,0.06)]" />
       <div className="space-y-1.5 pr-6">
@@ -74,8 +74,7 @@ function SkeletonRow() {
       <div className="h-6 w-16 rounded-full animate-pulse bg-[rgba(255,255,255,0.05)]" />
       <div className="h-6 w-16 rounded-full animate-pulse bg-[rgba(255,255,255,0.05)]" />
       <div className="h-3 w-6 rounded animate-pulse bg-[rgba(255,255,255,0.04)]" />
-      <div className="flex justify-end gap-1.5">
-        <div className="w-8 h-8 rounded-lg animate-pulse bg-[rgba(255,255,255,0.04)]" />
+      <div className="flex justify-end">
         <div className="w-8 h-8 rounded-lg animate-pulse bg-[rgba(255,255,255,0.04)]" />
       </div>
     </div>
@@ -107,8 +106,6 @@ export default function AdminStylesPage() {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
   const [imagePreviewError, setImagePreviewError] = useState(false);
 
@@ -202,23 +199,6 @@ export default function AdminStylesPage() {
     }
   };
 
-  const handleDelete = async () => {
-    if (!deleteConfirmId) return;
-    setDeleting(true);
-    try {
-      const res = await fetch(`/api/admin/styles/${deleteConfirmId}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Failed to delete.');
-      showToast('Style deleted.');
-      setDeleteConfirmId(null);
-      loadStyles();
-    } catch (e) {
-      showToast((e as Error).message, 'error');
-    } finally {
-      setDeleting(false);
-    }
-  };
-
-  const styleToDelete = styles.find((s) => s.id === deleteConfirmId);
 
   const previewUrl = form.thumbnail_url?.trim();
   const showPreview = Boolean(previewUrl) && !imagePreviewError;
@@ -255,14 +235,14 @@ export default function AdminStylesPage() {
         {/* Header row */}
         <div
           className="grid items-center px-5 py-3 text-xs font-semibold uppercase tracking-widest text-[#8888a0] border-b"
-          style={{ gridTemplateColumns: '56px 2fr 1fr 1fr 80px 96px', borderColor: 'rgba(255,255,255,0.06)' }}
+          style={{ gridTemplateColumns: '56px 2fr 1fr 1fr 80px 56px', borderColor: 'rgba(255,255,255,0.06)' }}
         >
           <span>Image</span>
           <span>Title</span>
           <span>Tier</span>
           <span>Status</span>
           <span>Order</span>
-          <span className="text-right">Actions</span>
+          <span className="text-right">Edit</span>
         </div>
 
         {/* Loading */}
@@ -292,7 +272,7 @@ export default function AdminStylesPage() {
               key={style.id}
               className="grid items-center px-5 py-4 transition-colors hover:bg-[rgba(255,255,255,0.02)]"
               style={{
-                gridTemplateColumns: '56px 2fr 1fr 1fr 80px 96px',
+                gridTemplateColumns: '56px 2fr 1fr 1fr 80px 56px',
                 borderBottom: idx < styles.length - 1 ? '1px solid rgba(255,255,255,0.04)' : undefined,
               }}
             >
@@ -366,24 +346,15 @@ export default function AdminStylesPage() {
               {/* Sort order */}
               <div className="text-sm text-[#8888a0] font-mono">{style.sort_order}</div>
 
-              {/* Actions */}
-              <div className="flex items-center justify-end gap-1.5">
+              {/* Edit action only */}
+              <div className="flex items-center justify-end">
                 <button
                   onClick={() => openEdit(style)}
                   className="w-8 h-8 flex items-center justify-center rounded-lg text-[#8888a0] hover:text-white hover:bg-[rgba(255,255,255,0.07)] transition-colors"
-                  title="Edit"
+                  title="Edit style"
                 >
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                     <path d="M9.5 2.5l2 2L4 12H2v-2L9.5 2.5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-                  </svg>
-                </button>
-                <button
-                  onClick={() => setDeleteConfirmId(style.id)}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg text-[#8888a0] hover:text-red-400 hover:bg-[rgba(239,68,68,0.08)] transition-colors"
-                  title="Delete"
-                >
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <path d="M2 3.5h10M5.5 3.5V2.5h3v1M4 3.5l.75 8h4.5L10 3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </button>
               </div>
@@ -618,52 +589,6 @@ export default function AdminStylesPage() {
         </div>
       )}
 
-      {/* ── Delete Confirm Modal ──────────────────────────────────────────── */}
-      {deleteConfirmId && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center px-4"
-          style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }}
-          onClick={() => !deleting && setDeleteConfirmId(null)}
-        >
-          <div
-            className="w-full max-w-sm rounded-3xl p-6 border"
-            style={{ background: 'rgba(12,12,20,0.99)', borderColor: 'rgba(255,255,255,0.1)' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div
-              className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-4"
-              style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.2)' }}
-            >
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                <path d="M10 7v5M10 14.5v.5M3 17L10 3l7 14H3z" stroke="#f87171" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </div>
-            <h3 className="text-white text-base font-semibold text-center mb-2">Delete Style?</h3>
-            <p className="text-[#8888a0] text-sm text-center mb-6">
-              <span className="text-white font-medium">"{styleToDelete?.title}"</span> will be permanently deleted and removed from the website.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setDeleteConfirmId(null)}
-                disabled={deleting}
-                className="flex-1 h-10 rounded-2xl text-sm font-medium text-[#8888a0] hover:text-white transition-colors disabled:opacity-40"
-                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                className="flex-1 h-10 rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
-                style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.25)', color: '#f87171' }}
-              >
-                {deleting && <Spinner size={13} />}
-                {deleting ? 'Deleting…' : 'Delete'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
