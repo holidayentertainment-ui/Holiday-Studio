@@ -17,6 +17,7 @@ export default function Header({ hasPremium, purchases, onUpgradeClick }: Header
   const [menuOpen, setMenuOpen] = useState(false);
   const [showPurchaseHistory, setShowPurchaseHistory] = useState(false);
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -28,10 +29,20 @@ export default function Header({ hasPremium, purchases, onUpgradeClick }: Header
     // Listen for auth changes (login / logout)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      if (!session?.user) setIsAdmin(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Check admin access whenever user changes
+  useEffect(() => {
+    if (!user) { setIsAdmin(false); return; }
+    fetch('/api/admin/check')
+      .then((r) => r.json())
+      .then((data) => setIsAdmin(Boolean(data.hasAccess)))
+      .catch(() => setIsAdmin(false));
+  }, [user]);
 
   const handleSignOut = async () => {
     const supabase = createClient();
@@ -147,6 +158,23 @@ export default function Header({ hasPremium, purchases, onUpgradeClick }: Header
                   <div className="px-4 py-2 border-b border-[rgba(255,255,255,0.06)]">
                     <p className="text-xs text-[#8888a0] truncate">{user.email}</p>
                   </div>
+                  {/* Admin Panel link — only visible to admins / team members */}
+                  {isAdmin && (
+                    <a
+                      href="/admin"
+                      onClick={() => setMenuOpen(false)}
+                      className="w-full text-left px-4 py-2.5 text-sm hover:bg-[rgba(255,255,255,0.05)] transition-colors flex items-center gap-2"
+                      style={{ color: '#818cf8' }}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                        <rect x="1" y="1" width="4.5" height="4.5" rx="1.2" stroke="currentColor" strokeWidth="1.2" />
+                        <rect x="7.5" y="1" width="4.5" height="4.5" rx="1.2" stroke="currentColor" strokeWidth="1.2" />
+                        <rect x="1" y="7.5" width="4.5" height="4.5" rx="1.2" stroke="currentColor" strokeWidth="1.2" />
+                        <rect x="7.5" y="7.5" width="4.5" height="4.5" rx="1.2" stroke="currentColor" strokeWidth="1.2" />
+                      </svg>
+                      Admin Panel
+                    </a>
+                  )}
                   <button
                     onClick={() => { setShowPurchaseHistory(true); setMenuOpen(false); }}
                     className="w-full text-left px-4 py-2.5 text-sm text-[#8888a0] hover:text-white hover:bg-[rgba(255,255,255,0.05)] transition-colors flex items-center gap-2"

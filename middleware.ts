@@ -32,10 +32,23 @@ export async function middleware(request: NextRequest) {
   );
 
   // Refresh session — keeps user logged in
+  let user = null;
   try {
-    await supabase.auth.getUser();
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
   } catch (error) {
     console.error('[middleware] Failed to refresh Supabase session:', error);
+  }
+
+  // ── Protect /admin routes ─────────────────────────────────────────────────
+  // The /admin/check API does the role verification; here we only gate on
+  // whether the user is logged in at all to avoid leaking the admin UI to
+  // unauthenticated visitors. The individual API routes do the full role check.
+  const { pathname } = request.nextUrl;
+  if (pathname.startsWith('/admin') && !user) {
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('next', pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
   return supabaseResponse;
