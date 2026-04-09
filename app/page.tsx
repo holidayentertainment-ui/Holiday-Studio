@@ -17,7 +17,7 @@ export type AppStep = 'idle' | 'ready' | 'generating' | 'result';
 
 // Empty string → uses Next.js internal /api routes (no cross-origin issues)
 const API_BASE = '';
-const STRIPE_URL = 'https://buy.stripe.com/test_9B64gy9A7cij9Xe8fgeIw00';
+const STRIPE_URL = 'https://buy.stripe.com/8x2dR89zxc5I1iw6hf3F600';
 
 export default function Home() {
   const [step, setStep] = useState<AppStep>('idle');
