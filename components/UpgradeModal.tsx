@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 const BENEFITS = [
   {
@@ -27,10 +27,12 @@ const BENEFITS = [
 
 interface UpgradeModalProps {
   onClose: () => void;
-  onUpgrade: () => void;
+  onUpgrade: (plan: 'monthly' | 'yearly') => void;
 }
 
 export default function UpgradeModal({ onClose, onUpgrade }: UpgradeModalProps) {
+  const [plan, setPlan] = useState<'monthly' | 'yearly'>('yearly');
+
   // Trap body scroll
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -43,6 +45,11 @@ export default function UpgradeModal({ onClose, onUpgrade }: UpgradeModalProps) 
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
+
+  const isYearly = plan === 'yearly';
+  const price    = isYearly ? '$99.99' : '$9.99';
+  const period   = isYearly ? '/ year' : '/ month';
+  const saving   = isYearly ? 'Save 17% vs monthly' : null;
 
   return (
     <div
@@ -99,7 +106,7 @@ export default function UpgradeModal({ onClose, onUpgrade }: UpgradeModalProps) 
 
         <div className="p-8 relative z-10">
           {/* Header */}
-          <div className="text-center mb-8">
+          <div className="text-center mb-6">
             <div
               className="inline-flex w-14 h-14 rounded-2xl items-center justify-center mb-4"
               style={{
@@ -124,13 +131,50 @@ export default function UpgradeModal({ onClose, onUpgrade }: UpgradeModalProps) 
             <p className="text-[#8888a0] text-sm">
               Everything you need for professional editorial results
             </p>
+          </div>
 
-            {/* Price */}
-            <div className="flex items-baseline justify-center gap-1 mt-5">
-              <span className="text-4xl font-bold tracking-tight gradient-text-premium">$9.99</span>
-              <span className="text-[#8888a0] text-sm">/ one-time</span>
+          {/* Plan Toggle */}
+          <div
+            className="flex rounded-2xl p-1 mb-6"
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+          >
+            {(['monthly', 'yearly'] as const).map((p) => (
+              <button
+                key={p}
+                onClick={() => setPlan(p)}
+                className="flex-1 h-10 rounded-xl text-sm font-semibold transition-all capitalize flex items-center justify-center gap-2"
+                style={
+                  plan === p
+                    ? {
+                        background: 'linear-gradient(135deg, rgba(245,158,11,0.25), rgba(217,119,6,0.2))',
+                        border: '1px solid rgba(245,158,11,0.35)',
+                        color: '#fcd34d',
+                      }
+                    : { color: 'rgba(255,255,255,0.4)' }
+                }
+              >
+                {p}
+                {p === 'yearly' && (
+                  <span
+                    className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                    style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981' }}
+                  >
+                    Save 17%
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* Price */}
+          <div className="text-center mb-6">
+            <div className="flex items-baseline justify-center gap-1">
+              <span className="text-4xl font-bold tracking-tight gradient-text-premium">{price}</span>
+              <span className="text-[#8888a0] text-sm">{period}</span>
             </div>
-            <p className="text-xs text-[#44444f] mt-1">No subscription · Access forever</p>
+            {saving && (
+              <p className="text-xs text-emerald-400 mt-1">{saving}</p>
+            )}
           </div>
 
           {/* Benefits */}
@@ -163,8 +207,11 @@ export default function UpgradeModal({ onClose, onUpgrade }: UpgradeModalProps) 
 
           {/* CTA buttons */}
           <div className="space-y-3">
-            <button onClick={onUpgrade} className="btn-premium w-full h-14 rounded-2xl text-base">
-              Upgrade Now — $9.99
+            <button
+              onClick={() => onUpgrade(plan)}
+              className="btn-premium w-full h-14 rounded-2xl text-base"
+            >
+              {isYearly ? 'Upgrade Now — $99.99 / year' : 'Upgrade Now — $9.99 / month'}
             </button>
             <button
               onClick={onClose}

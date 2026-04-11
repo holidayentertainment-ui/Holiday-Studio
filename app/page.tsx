@@ -17,7 +17,8 @@ export type AppStep = 'idle' | 'ready' | 'generating' | 'result';
 
 // Empty string → uses Next.js internal /api routes (no cross-origin issues)
 const API_BASE = '';
-const STRIPE_URL = 'https://buy.stripe.com/8x2dR89zxc5I1iw6hf3F600';
+const STRIPE_MONTHLY_URL = 'https://buy.stripe.com/8x2dR89zxc5I1iw6hf3F600';
+const STRIPE_YEARLY_URL  = 'https://buy.stripe.com/6oU5kC6nl7Psgdq8pn3F601';
 
 export default function Home() {
   const [step, setStep] = useState<AppStep>('idle');
@@ -126,7 +127,8 @@ export default function Home() {
 
       // If user came back from login to complete a purchase, open Stripe
       if (state.pendingStripe) {
-        setTimeout(() => window.open(STRIPE_URL, '_blank'), 800);
+        const pendingBase = state.pendingPlan === 'yearly' ? STRIPE_YEARLY_URL : STRIPE_MONTHLY_URL;
+        setTimeout(() => window.open(pendingBase, '_blank'), 800);
       }
     } catch {
       // sessionStorage unavailable or corrupted — ignore
@@ -228,12 +230,13 @@ export default function Home() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
-  const handleUpgrade = useCallback(() => {
+  const handleUpgrade = useCallback((plan: 'monthly' | 'yearly' = 'monthly') => {
     if (!user) {
       // Not logged in — save Stripe intent (+ any image state) and go to login first
       try {
         sessionStorage.setItem('hfs_pending', JSON.stringify({
           pendingStripe: true,
+          pendingPlan: plan,
           ...(uploadedImage ? {
             uploadedImage,
             uploadedMimeType,
@@ -251,7 +254,8 @@ export default function Home() {
     // Build Stripe URL with user ID + prefilled email
     // client_reference_id lets the webhook find the user by ID regardless of
     // which email they type in the Stripe form
-    const stripeUrl = new URL(STRIPE_URL);
+    const baseUrl = plan === 'yearly' ? STRIPE_YEARLY_URL : STRIPE_MONTHLY_URL;
+    const stripeUrl = new URL(baseUrl);
     stripeUrl.searchParams.set('client_reference_id', user.id);
     if (user.email) stripeUrl.searchParams.set('prefilled_email', user.email);
     window.open(stripeUrl.toString(), '_blank');
