@@ -16,7 +16,10 @@ export async function GET() {
     .select('key, value')
     .in('key', ['before_image_url', 'after_image_url', 'before_after_enabled']);
 
-  if (error) return NextResponse.json({ settings: {} });
+  if (error) {
+    console.error('[site-settings] DB error:', error.message);
+    return NextResponse.json({ settings: {} });
+  }
 
   const settings: Record<string, string | null> = {};
   for (const row of data ?? []) {

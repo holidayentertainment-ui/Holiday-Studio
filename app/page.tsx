@@ -85,11 +85,12 @@ export default function Home() {
       .then((r) => r.json())
       .then((data) => {
         const s = data.settings ?? {};
+        console.log('[site-settings]', s);
         if (s.before_after_enabled === 'true' && s.before_image_url && s.after_image_url) {
           setBeforeAfterImages({ before: s.before_image_url, after: s.after_image_url, enabled: true });
         }
       })
-      .catch(() => { /* non-blocking */ });
+      .catch((err) => console.error('[site-settings] fetch failed:', err));
   }, []);
 
   // ── Handle Stripe redirect: ?payment=success ──────────────────────────

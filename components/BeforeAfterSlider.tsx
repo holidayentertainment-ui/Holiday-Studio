@@ -12,11 +12,15 @@ export default function BeforeAfterSlider({ beforeUrl, afterUrl }: BeforeAfterSl
   const containerRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
 
+  // Keep container width stable for position calculation
+  const getContainerRect = () => containerRef.current?.getBoundingClientRect();
+
   const updatePosition = useCallback((clientX: number) => {
-    if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
+    const rect = getContainerRect();
+    if (!rect) return;
     const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
     setPosition((x / rect.width) * 100);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const onMouseMove = useCallback(
@@ -59,20 +63,15 @@ export default function BeforeAfterSlider({ beforeUrl, afterUrl }: BeforeAfterSl
         draggable={false}
       />
 
-      {/* Before (left / clipped) */}
-      <div
-        className="absolute inset-0 overflow-hidden"
-        style={{ width: `${position}%` }}
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={beforeUrl}
-          alt="Before"
-          className="absolute inset-0 w-full h-full object-cover"
-          style={{ width: containerRef.current ? `${containerRef.current.clientWidth}px` : '100%' }}
-          draggable={false}
-        />
-      </div>
+      {/* Before (left / clipped via clip-path) */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={beforeUrl}
+        alt="Before"
+        className="absolute inset-0 w-full h-full object-cover"
+        style={{ clipPath: `inset(0 ${100 - position}% 0 0)` }}
+        draggable={false}
+      />
 
       {/* Divider line */}
       <div
