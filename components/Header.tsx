@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
 import PurchaseHistory from '@/components/PurchaseHistory';
+import NotificationBell from '@/components/NotificationBell';
 import type { Purchase } from '@/app/api/payment-status/route';
 
 interface HeaderProps {
@@ -96,7 +97,7 @@ export default function Header({ hasPremium, purchases, onUpgradeClick }: Header
         </nav>
 
         {/* Right side */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {hasPremium ? (
             <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgba(245,158,11,0.1)] border border-[rgba(245,158,11,0.2)]">
               <svg
@@ -120,6 +121,9 @@ export default function Header({ hasPremium, purchases, onUpgradeClick }: Header
               Upgrade — $9.99
             </button>
           )}
+
+          {/* Notification Bell — only for logged-in users */}
+          <NotificationBell user={user ? { id: user.id, email: user.email ?? '' } : null} />
 
           {/* Auth — logged in: avatar + dropdown / logged out: Sign In link */}
           {user ? (

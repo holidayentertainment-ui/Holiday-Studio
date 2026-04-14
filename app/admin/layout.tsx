@@ -40,6 +40,30 @@ const NAV_ITEMS = [
       </svg>
     ),
   },
+  {
+    href: '/admin/users',
+    label: 'Users',
+    exact: false,
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <circle cx="5.5" cy="5" r="2.5" stroke="currentColor" strokeWidth="1.4" />
+        <path d="M1 13c0-2.485 2.015-4.5 4.5-4.5S10 10.515 10 13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+        <circle cx="12" cy="5" r="2" stroke="currentColor" strokeWidth="1.4" />
+        <path d="M10.5 13c0-1.657 1.12-3 2.5-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
+    href: '/admin/settings',
+    label: 'Settings',
+    exact: false,
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <circle cx="8" cy="8" r="2.5" stroke="currentColor" strokeWidth="1.4" />
+        <path d="M8 1.5v1.25M8 13.25V14.5M1.5 8h1.25M13.25 8H14.5M3.4 3.4l.88.88M11.72 11.72l.88.88M3.4 12.6l.88-.88M11.72 4.28l.88-.88" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      </svg>
+    ),
+  },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
