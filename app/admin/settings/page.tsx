@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 
 interface SiteSettings {
   before_image_url: string | null;
@@ -45,7 +45,7 @@ function Spinner({ size = 14 }: { size?: number }) {
   );
 }
 
-/* ── Image Preview Card ── */
+/* ── Image Preview Card with upload + URL ── */
 function ImagePreviewCard({
   label,
   description,
@@ -57,6 +57,36 @@ function ImagePreviewCard({
   value: string;
   onChange: (v: string) => void;
 }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+
+  const handleFile = (file: File) => {
+    if (!file.type.startsWith('image/')) return;
+    setUploading(true);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      onChange(e.target?.result as string);
+      setUploading(false);
+    };
+    reader.onerror = () => setUploading(false);
+    reader.readAsDataURL(file);
+  };
+
+  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleFile(file);
+    // reset so same file can be re-selected
+    e.target.value = '';
+  };
+
+  const onDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFile(file);
+  };
+
   return (
     <div
       className="rounded-2xl p-5 border"
@@ -65,36 +95,103 @@ function ImagePreviewCard({
       <p className="text-sm font-semibold text-white mb-1">{label}</p>
       <p className="text-xs text-[#8888a0] mb-4">{description}</p>
 
-      {/* Preview */}
+      {/* Preview / Drop Zone */}
       <div
-        className="w-full h-44 rounded-xl mb-4 overflow-hidden flex items-center justify-center"
-        style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}
+        className="w-full h-44 rounded-xl mb-4 overflow-hidden flex items-center justify-center relative transition-colors cursor-pointer"
+        style={{
+          background: dragOver ? 'rgba(99,102,241,0.08)' : 'rgba(255,255,255,0.04)',
+          border: `1px ${dragOver ? 'dashed' : 'solid'} ${dragOver ? 'rgba(99,102,241,0.4)' : 'rgba(255,255,255,0.06)'}`,
+        }}
+        onClick={() => fileInputRef.current?.click()}
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={onDrop}
       >
-        {value ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={value}
-            alt={label}
-            className="w-full h-full object-cover"
-            onError={(e) => { e.currentTarget.style.display = 'none'; }}
-          />
-        ) : (
+        {uploading ? (
           <div className="text-center">
+            <svg className="mx-auto mb-2 animate-spin text-indigo-400" width="22" height="22" viewBox="0 0 14 14" fill="none">
+              <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeOpacity="0.25" strokeWidth="2" />
+              <path d="M7 1.5A5.5 5.5 0 0112.5 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+            <p className="text-xs text-[#8888a0]">Processing…</p>
+          </div>
+        ) : value ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={value}
+              alt={label}
+              className="w-full h-full object-cover"
+              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+            />
+            {/* Hover overlay */}
+            <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity" style={{ background: 'rgba(0,0,0,0.55)' }}>
+              <p className="text-xs font-medium text-white">Click to replace</p>
+            </div>
+          </>
+        ) : (
+          <div className="text-center pointer-events-none">
             <svg className="mx-auto mb-2 text-[#44444f]" width="28" height="28" viewBox="0 0 28 28" fill="none">
               <rect x="2" y="5" width="24" height="18" rx="3" stroke="currentColor" strokeWidth="1.5" />
               <circle cx="9" cy="11" r="2.5" stroke="currentColor" strokeWidth="1.5" />
               <path d="M2 19l6-5 4 4 4-3.5 8 6" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
             </svg>
-            <p className="text-xs text-[#44444f]">No image set</p>
+            <p className="text-xs text-[#8888a0]">Click or drag &amp; drop to upload</p>
+            <p className="text-[10px] text-[#44444f] mt-1">JPG, PNG, WebP</p>
           </div>
         )}
       </div>
 
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={onFileChange}
+      />
+
+      {/* Upload button row */}
+      <div className="flex items-center gap-2 mb-3">
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+          style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)', color: '#818cf8' }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(99,102,241,0.18)')}
+          onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(99,102,241,0.1)')}
+        >
+          <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+            <path d="M5.5 8V3M3 5.5l2.5-2.5 2.5 2.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M1.5 9.5h8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+          </svg>
+          Upload File
+        </button>
+        {value && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onChange(''); }}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors"
+            style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.18)', color: '#f87171' }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(239,68,68,0.15)')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(239,68,68,0.08)')}
+          >
+            Remove
+          </button>
+        )}
+      </div>
+
+      {/* Divider */}
+      <div className="flex items-center gap-2 mb-3">
+        <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
+        <span className="text-[10px] text-[#44444f] uppercase tracking-wider">or paste URL</span>
+        <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
+      </div>
+
       {/* URL Input */}
-      <label className="block text-xs font-medium text-[#8888a0] mb-2">Image URL</label>
       <input
         type="url"
-        value={value}
+        value={value.startsWith('data:') ? '' : value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="https://example.com/image.jpg"
         className="w-full h-10 rounded-xl px-3 text-sm text-white placeholder-[#44444f] outline-none"
@@ -102,6 +199,9 @@ function ImagePreviewCard({
         onFocus={(e) => (e.currentTarget.style.borderColor = 'rgba(99,102,241,0.4)')}
         onBlur={(e) => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)')}
       />
+      {value.startsWith('data:') && (
+        <p className="text-[10px] text-[#44444f] mt-1.5">Uploaded file — saved as base64</p>
+      )}
     </div>
   );
 }

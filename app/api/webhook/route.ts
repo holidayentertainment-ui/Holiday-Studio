@@ -142,6 +142,25 @@ export async function POST(req: NextRequest) {
       }
     } else {
       console.log('[webhook] ✓ Purchase saved — email:', customerEmail, 'user_id:', userId ?? 'null (email-only)');
+
+      // ── Send purchase notification to the user ──────────────────────
+      if (userId || customerEmail) {
+        const amountFormatted = session.amount_total
+          ? `$${(session.amount_total / 100).toFixed(2)}`
+          : '';
+        try {
+          await supabase.from('notifications').insert({
+            user_id: userId,
+            user_email: customerEmail?.toLowerCase() ?? null,
+            title: '🎉 Premium Unlocked!',
+            message: `Your Premium plan is now active${amountFormatted ? ` (${amountFormatted})` : ''}. All styles — including Full Editorial, High Fashion, and Cinematic Portrait — are now available.`,
+            type: 'success',
+          });
+          console.log('[webhook] ✓ Purchase notification sent');
+        } catch (e) {
+          console.warn('[webhook] Notification insert failed:', e);
+        }
+      }
     }
   }
 

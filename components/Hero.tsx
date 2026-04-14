@@ -91,9 +91,6 @@ export default function Hero({ onUploadClick }: HeroProps) {
                   />
                 </svg>
               </button>
-              <button className="btn-ghost h-13 px-6 py-3.5 rounded-xl text-base">
-                View Examples
-              </button>
             </div>
 
             {/* Stats row */}

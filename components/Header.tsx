@@ -83,18 +83,6 @@ export default function Header({ hasPremium, purchases, onUpgradeClick }: Header
           <span className="font-semibold text-[15px] tracking-tight sm:hidden">HFS</span>
         </div>
 
-        {/* Nav links (desktop) */}
-        <nav className="hidden md:flex items-center gap-6">
-          {['Features', 'Pricing', 'Gallery'].map((item) => (
-            <a
-              key={item}
-              href="#"
-              className="text-sm text-[#8888a0] hover:text-white transition-colors"
-            >
-              {item}
-            </a>
-          ))}
-        </nav>
 
         {/* Right side */}
         <div className="flex items-center gap-2">
