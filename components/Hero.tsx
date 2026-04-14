@@ -2,16 +2,13 @@
 
 interface HeroProps {
   onUploadClick: () => void;
+  beforeImageUrl?: string | null;
+  afterImageUrl?: string | null;
 }
 
-const BEFORE_PHOTOS = [
-  { label: 'Original', bg: 'linear-gradient(160deg, #1a1a2e 0%, #2d1b4e 50%, #1a2a3a 100%)' },
-  { label: 'High Fashion', bg: 'linear-gradient(160deg, #0d1117 0%, #1a0a2e 40%, #2a1040 100%)' },
-];
-
-const AFTER_STYLES = [
-  { name: 'Professional Headshot', tag: 'Free', color: 'rgba(99,102,241,0.7)' },
-  { name: 'High Fashion Editorial', tag: 'Premium', color: 'rgba(245,158,11,0.7)' },
+const CARD_STYLES = [
+  { name: 'Professional Headshot', label: 'Before', fallbackBg: 'linear-gradient(160deg, #1a1a2e 0%, #2d1b4e 50%, #1a2a3a 100%)' },
+  { name: 'High Fashion Editorial', label: 'After',  fallbackBg: 'linear-gradient(160deg, #0d1117 0%, #1a0a2e 40%, #2a1040 100%)' },
 ];
 
 const STATS = [
@@ -20,7 +17,8 @@ const STATS = [
   { value: '<30s', label: 'Generation Time' },
 ];
 
-export default function Hero({ onUploadClick }: HeroProps) {
+export default function Hero({ onUploadClick, beforeImageUrl, afterImageUrl }: HeroProps) {
+  const cardImages = [beforeImageUrl, afterImageUrl];
   return (
     <section className="relative overflow-hidden">
       {/* Ambient glow */}
@@ -122,68 +120,72 @@ export default function Hero({ onUploadClick }: HeroProps) {
             />
 
             <div className="grid grid-cols-2 gap-4 relative z-10">
-              {BEFORE_PHOTOS.map((photo, i) => (
-                <div
-                  key={i}
-                  className="relative rounded-3xl overflow-hidden"
-                  style={{
-                    background: photo.bg,
-                    aspectRatio: '3/4',
-                    boxShadow: '0 4px 32px rgba(0,0,0,0.6)',
-                  }}
-                >
-                  {/* Silhouette SVG art */}
-                  <svg
-                    viewBox="0 0 200 280"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="absolute inset-0 w-full h-full opacity-25"
-                  >
-                    <ellipse cx="100" cy="80" rx="40" ry="48" fill="rgba(255,255,255,0.7)" />
-                    <path
-                      d="M40 220 Q60 150 100 140 Q140 150 160 220"
-                      fill="rgba(255,255,255,0.5)"
-                    />
-                  </svg>
-
-                  {/* Gradient overlay */}
+              {CARD_STYLES.map((card, i) => {
+                const imgUrl = cardImages[i];
+                return (
                   <div
-                    className="absolute inset-0"
+                    key={i}
+                    className="relative rounded-3xl overflow-hidden"
                     style={{
-                      background:
-                        'linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 60%)',
+                      background: imgUrl ? 'transparent' : card.fallbackBg,
+                      aspectRatio: '3/4',
+                      boxShadow: '0 4px 32px rgba(0,0,0,0.6)',
                     }}
-                  />
+                  >
+                    {/* Actual image (when set in admin) */}
+                    {imgUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={imgUrl}
+                        alt={card.label}
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                    ) : (
+                      /* Fallback silhouette placeholder */
+                      <svg
+                        viewBox="0 0 200 280"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="absolute inset-0 w-full h-full opacity-25"
+                      >
+                        <ellipse cx="100" cy="80" rx="40" ry="48" fill="rgba(255,255,255,0.7)" />
+                        <path
+                          d="M40 220 Q60 150 100 140 Q140 150 160 220"
+                          fill="rgba(255,255,255,0.5)"
+                        />
+                      </svg>
+                    )}
 
-                  {/* Label */}
-                  <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
-                    <span className="text-xs font-medium text-white/80">{photo.label}</span>
+                    {/* Gradient overlay for readability */}
                     <div
-                      className="px-2 py-0.5 rounded-full text-[10px] font-semibold"
+                      className="absolute inset-0"
                       style={{
-                        background: AFTER_STYLES[i].color,
-                        color: 'white',
+                        background: 'linear-gradient(to top, rgba(0,0,0,0.65) 0%, transparent 55%)',
                       }}
-                    >
-                      {AFTER_STYLES[i].tag}
+                    />
+
+                    {/* Style name — top */}
+                    <div className="absolute top-3 left-3 right-3">
+                      <div className="inline-block px-2.5 py-1 rounded-full text-[11px] font-medium bg-[rgba(255,255,255,0.1)] border border-[rgba(255,255,255,0.12)] backdrop-blur-sm text-white/70">
+                        {card.name}
+                      </div>
+                    </div>
+
+                    {/* Before / After label — bottom */}
+                    <div className="absolute bottom-3 left-3">
+                      <span
+                        className="px-2.5 py-1 rounded-full text-[11px] font-semibold text-white"
+                        style={{
+                          background: i === 0 ? 'rgba(255,255,255,0.15)' : 'rgba(99,102,241,0.7)',
+                          backdropFilter: 'blur(6px)',
+                        }}
+                      >
+                        {card.label}
+                      </span>
                     </div>
                   </div>
-
-                  {/* Style tag */}
-                  <div className="absolute top-3 left-3">
-                    <div className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-[rgba(255,255,255,0.1)] border border-[rgba(255,255,255,0.12)] backdrop-blur-sm text-white/70">
-                      {AFTER_STYLES[i].name}
-                    </div>
-                  </div>
-
-                  {/* Sparkle */}
-                  {i === 1 && (
-                    <div className="absolute top-3 right-3 text-amber-300 text-base animate-pulse">
-                      ✦
-                    </div>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Arrow between cards */}

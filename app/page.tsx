@@ -9,7 +9,6 @@ import PoseSelection from '@/components/PoseSelection';
 import LoadingState from '@/components/LoadingState';
 import ResultDisplay from '@/components/ResultDisplay';
 import UpgradeModal from '@/components/UpgradeModal';
-import BeforeAfterSlider from '@/components/BeforeAfterSlider';
 import { createClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
 import type { Purchase } from '@/app/api/payment-status/route';
@@ -79,18 +78,21 @@ export default function Home() {
     return () => subscription.unsubscribe();
   }, [fetchPremiumStatus]);
 
-  // ── Fetch before/after images ─────────────────────────────────────────
+  // ── Fetch before/after images for hero cards ──────────────────────────
   useEffect(() => {
     fetch('/api/site-settings')
       .then((r) => r.json())
       .then((data) => {
         const s = data.settings ?? {};
-        console.log('[site-settings]', s);
-        if (s.before_after_enabled === 'true' && s.before_image_url && s.after_image_url) {
-          setBeforeAfterImages({ before: s.before_image_url, after: s.after_image_url, enabled: true });
+        if (s.before_image_url || s.after_image_url) {
+          setBeforeAfterImages({
+            before: s.before_image_url ?? '',
+            after: s.after_image_url ?? '',
+            enabled: true,
+          });
         }
       })
-      .catch((err) => console.error('[site-settings] fetch failed:', err));
+      .catch(() => { /* non-blocking */ });
   }, []);
 
   // ── Handle Stripe redirect: ?payment=success ──────────────────────────
@@ -312,19 +314,9 @@ export default function Home() {
         onUploadClick={() => {
           document.getElementById('upload-section')?.scrollIntoView({ behavior: 'smooth' });
         }}
+        beforeImageUrl={beforeAfterImages?.before ?? null}
+        afterImageUrl={beforeAfterImages?.after ?? null}
       />
-
-      {/* Before / After showcase — shown only when admin has set images */}
-      {beforeAfterImages?.enabled && (
-        <section className="max-w-4xl mx-auto px-6 py-12">
-          <div className="text-center mb-8">
-            <p className="text-xs font-semibold uppercase tracking-widest text-indigo-400 mb-2">See the Difference</p>
-            <h2 className="text-2xl font-bold tracking-tight text-white">Before &amp; After</h2>
-            <p className="text-sm text-[#8888a0] mt-2">Drag the slider to compare the original with the AI-generated result.</p>
-          </div>
-          <BeforeAfterSlider beforeUrl={beforeAfterImages.before} afterUrl={beforeAfterImages.after} />
-        </section>
-      )}
 
       <UploadArea
         id="upload-section"
