@@ -219,8 +219,26 @@ export default function Home() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Generation failed.');
 
-      setGeneratedImage(data.imageUrl || uploadedImage);
+      const resultImageUrl = data.imageUrl || uploadedImage;
+      setGeneratedImage(resultImageUrl);
       setStep('result');
+
+      // Persist to Supabase Storage + DB (non-blocking — never affects UX)
+      if (user && resultImageUrl && resultImageUrl.startsWith('data:')) {
+        fetch(`${API_BASE}/api/generations`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            imageBase64: resultImageUrl,
+            styleId: selectedStyle,
+            poseId: selectedPose,
+            location: locationInput || undefined,
+            wardrobe: wardrobeInput || undefined,
+          }),
+        }).catch(() => {
+          // Silent — history save failure must not interrupt the user
+        });
+      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Something went wrong.';
       // Demo fallback: use uploaded image as mock result
@@ -283,7 +301,7 @@ export default function Home() {
   const canGenerate = step === 'ready' && !!uploadedImage;
 
   return (
-    <div className="min-h-screen bg-[#07070d] text-white overflow-x-hidden">
+    <div className="min-h-screen bg-[#07070d] text-white overflow-x-hidden pt-16">
 
       {/* Payment success banner */}
       {showPaymentSuccess && (

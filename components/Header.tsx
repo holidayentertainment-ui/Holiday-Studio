@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
 import PurchaseHistory from '@/components/PurchaseHistory';
+import GenerationHistory from '@/components/GenerationHistory';
 import NotificationBell from '@/components/NotificationBell';
 import type { Purchase } from '@/app/api/payment-status/route';
 
@@ -17,6 +18,7 @@ export default function Header({ hasPremium, purchases, onUpgradeClick }: Header
   const [user, setUser] = useState<User | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showPurchaseHistory, setShowPurchaseHistory] = useState(false);
+  const [showGenerationHistory, setShowGenerationHistory] = useState(false);
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -57,8 +59,8 @@ export default function Header({ hasPremium, purchases, onUpgradeClick }: Header
   return (
     <>
     <header
-      className="sticky top-0 z-50 w-full border-b border-[rgba(255,255,255,0.05)]"
-      style={{ background: 'rgba(7,7,13,0.85)', backdropFilter: 'blur(20px)' }}
+      className="fixed top-0 left-0 right-0 z-50 w-full border-b border-[rgba(255,255,255,0.05)]"
+      style={{ background: 'rgba(7,7,13,0.92)', backdropFilter: 'blur(20px)' }}
     >
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-6">
         {/* Logo */}
@@ -83,6 +85,23 @@ export default function Header({ hasPremium, purchases, onUpgradeClick }: Header
           <span className="font-semibold text-[15px] tracking-tight sm:hidden">HFS</span>
         </div>
 
+
+        {/* Nav — Gallery button (logged-in users only) */}
+        {user && (
+          <button
+            onClick={() => setShowGenerationHistory(true)}
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm text-[#8888a0] hover:text-white transition-colors"
+            style={{ border: '1px solid rgba(255,255,255,0.07)' }}
+          >
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+              <rect x="1" y="1" width="4.5" height="4.5" rx="1.2" stroke="currentColor" strokeWidth="1.2" />
+              <rect x="7.5" y="1" width="4.5" height="4.5" rx="1.2" stroke="currentColor" strokeWidth="1.2" />
+              <rect x="1" y="7.5" width="4.5" height="4.5" rx="1.2" stroke="currentColor" strokeWidth="1.2" />
+              <rect x="7.5" y="7.5" width="4.5" height="4.5" rx="1.2" stroke="currentColor" strokeWidth="1.2" />
+            </svg>
+            Gallery
+          </button>
+        )}
 
         {/* Right side */}
         <div className="flex items-center gap-2">
@@ -245,6 +264,13 @@ export default function Header({ hasPremium, purchases, onUpgradeClick }: Header
         onClose={() => setShowPurchaseHistory(false)}
       />
     )}
-    </>
+
+    {/* Generation History modal */}
+    {showGenerationHistory && (
+      <GenerationHistory
+        onClose={() => setShowGenerationHistory(false)}
+      />
+    )}
+</>
   );
 }
