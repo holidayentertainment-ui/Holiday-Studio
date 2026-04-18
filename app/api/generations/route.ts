@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { createClient as createServiceClient } from '@supabase/supabase-js';
+import { createClient as createServiceClient, type SupabaseClient } from '@supabase/supabase-js';
 
 const BUCKET = 'generated-images';
 
@@ -9,7 +9,8 @@ export const maxDuration = 30;
 
 // ── Ensure the storage bucket exists (idempotent) ─────────────────────────
 
-async function ensureBucket(service: ReturnType<typeof createServiceClient>) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function ensureBucket(service: SupabaseClient<any, any, any>) {
   const { error } = await service.storage.createBucket(BUCKET, {
     public: false,
     fileSizeLimit: 12 * 1024 * 1024, // 12 MB
