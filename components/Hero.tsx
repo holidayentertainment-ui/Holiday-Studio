@@ -164,13 +164,6 @@ export default function Hero({ onUploadClick, beforeImageUrl, afterImageUrl }: H
                       }}
                     />
 
-                    {/* Style name — top */}
-                    <div className="absolute top-3 left-3 right-3">
-                      <div className="inline-block px-2.5 py-1 rounded-full text-[11px] font-medium bg-[rgba(255,255,255,0.1)] border border-[rgba(255,255,255,0.12)] backdrop-blur-sm text-white/70">
-                        {card.name}
-                      </div>
-                    </div>
-
                     {/* Before / After label — bottom */}
                     <div className="absolute bottom-3 left-3">
                       <span
